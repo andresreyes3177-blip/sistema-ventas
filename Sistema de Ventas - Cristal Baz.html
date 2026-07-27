@@ -2660,6 +2660,7 @@ document.getElementById('btnGuardarDatosCliente').addEventListener('click', asyn
       domicilio: document.getElementById('edClDomicilio').value.trim() || null,
       zona: document.getElementById('edClZona').value.trim() || null,
       clasificacion: document.getElementById('edClClasificacion').value || null,
+      estado_comercial: document.getElementById('edClEstadoComercial').value || 'cliente',
       alerta_umbral_dias: document.getElementById('edClAlertaUmbral').value ? Number(document.getElementById('edClAlertaUmbral').value) : null,
     });
     cache.clientes = await fetchClientesFiltrados();
