@@ -2227,6 +2227,7 @@ function limpiarFormularioCliente() {
   ['clRazonSocial','clEmail','clTelefono','clCuit','clDomicilio','clZona','clLocalidadOtra'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('clSucursal').value = sucursalActivaEfectiva() || '';
   document.getElementById('clClasificacion').value = '';
+  document.getElementById('clEstadoComercial').value = 'cliente';
   document.getElementById('clLocalidadOtra').style.display = 'none';
   poblarSelectLocalidad('');
 }
