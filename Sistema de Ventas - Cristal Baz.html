@@ -2256,6 +2256,7 @@ function abrirEdicionCliente(clienteId) {
   document.getElementById('clDomicilio').value = c.domicilio || '';
   document.getElementById('clZona').value = c.zona || '';
   document.getElementById('clClasificacion').value = c.clasificacion || '';
+  document.getElementById('clEstadoComercial').value = c.estado_comercial || 'cliente';
   document.getElementById('clSucursal').value = c.sucursal_id || '';
   poblarSelectLocalidad(c.localidad || '');
   document.getElementById('clLocalidadOtra').style.display = 'none';
