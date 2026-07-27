@@ -2499,6 +2499,7 @@ async function openClienteModal(clienteId) {
   document.getElementById('edClDomicilio').value = cliente.domicilio || '';
   document.getElementById('edClZona').value = cliente.zona || '';
   document.getElementById('edClClasificacion').value = cliente.clasificacion || '';
+  document.getElementById('edClEstadoComercial').value = cliente.estado_comercial || 'cliente';
   document.getElementById('edClAlertaUmbral').value = cliente.alerta_umbral_dias ?? '';
   document.getElementById('edClSucursal').value = cliente.sucursal_id || '';
   poblarSelectLocalidadEn('edClLocalidad', cliente.localidad || '');
