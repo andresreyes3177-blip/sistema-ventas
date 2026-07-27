@@ -2570,7 +2570,7 @@ async function openClienteModal(clienteId) {
 
   await refreshContactosModal();
   await refreshInteraccionesModal();
-  await asegurarVentasDetalladas();
+  ventasClienteFichaActual = await DB.listVentasCliente(clienteId);
   await mostrarSugerenciasCrosssellEnFicha(clienteId);
   renderHistorialVentasCliente(clienteId);
   document.getElementById('clienteModalOverlay').style.display = 'flex';
