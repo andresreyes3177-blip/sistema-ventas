@@ -1945,6 +1945,31 @@ const DB_RAW = {
   bulkInsertInteracciones: async (rows) => { const { error } = await sb.from('interacciones').insert(rows); if (error) throw error; },
 };
 
+// Envuelve cada función de DB para prender/apagar el indicador de "Cargando
+// datos..." de arriba a la derecha automáticamente — así no hay que acordarse
+// de hacerlo a mano en cada botón que pide datos. El contador es porque puede
+// haber varios pedidos en simultáneo (ej. refreshClientes dispara varios a la
+// vez): el indicador solo se apaga cuando termina el último.
+let cargasEnCurso = 0;
+function marcarCargando(activo) {
+  cargasEnCurso += activo ? 1 : -1;
+  document.getElementById('globalLoadingIndicator').classList.toggle('mostrar', cargasEnCurso > 0);
+}
+const DB = new Proxy(DB_RAW, {
+  get(target, prop) {
+    const original = target[prop];
+    if (typeof original !== 'function') return original;
+    return async (...args) => {
+      marcarCargando(true);
+      try {
+        return await original.apply(target, args);
+      } finally {
+        marcarCargando(false);
+      }
+    };
+  },
+});
+
 function reportError(error) { console.error(error); alert('Ocurrió un error: ' + (error.message || error)); }
 
 // ---------------- Auth ----------------
