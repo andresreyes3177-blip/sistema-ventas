@@ -1165,7 +1165,7 @@
     </div>
 
     <div class="card vta-subpanel" id="vtaResumenCard" style="display:none;">
-      <h2>Historial de Ventas — por Cliente</h2>
+      <h2>Historial de Ventas — por Zonas y Clientes</h2>
       <p class="hint">Consumo mes por mes de los <strong>últimos 3 meses completos</strong> (sin contar el mes en curso) y su promedio, por cliente — ordenado de mayor a menor consumo total. Se actualiza solo apenas importás Ventas nuevas. Entrá a un cliente para ver el ranking de qué Subrubros y Artículos consume.</p>
       <div class="field-row">
         <div class="field"><label>Buscar cliente</label><input type="text" id="vtaResumenBuscar" placeholder="Escribí para filtrar..."></div>
@@ -1176,6 +1176,52 @@
           <thead><tr><th>Cliente</th><th>Localidad</th><th id="vtaResumenMesCol1"></th><th id="vtaResumenMesCol2"></th><th id="vtaResumenMesCol3"></th><th>Consumo actual (mes en curso)</th><th>Promedio mensual</th><th></th></tr></thead>
           <tbody id="vtaResumenTbody"></tbody>
         </table>
+      </div>
+
+      <h3 style="margin-top:28px;">📍 Dashboard de Localidad</h3>
+      <p class="hint">Usa la Localidad elegida arriba (o "Todas" para comparar) y, opcionalmente, un rango de fechas — independiente de los filtros de producto de "Análisis de Artículos Vendidos".</p>
+      <div class="field-row">
+        <div class="field"><label>Desde</label><input type="date" id="vtaResumenLocDesde"></div>
+        <div class="field"><label>Hasta</label><input type="date" id="vtaResumenLocHasta"></div>
+        <div class="field" style="align-self:flex-end;"><button type="button" class="btn-secondary" id="btnVtaAnalisisPorLocalidad">📍 Ver Dashboard de Localidad</button></div>
+      </div>
+
+      <div id="vtaAnalisisLocalidadWrap" style="display:none;">
+        <h4>📍 Consumo por Localidad</h4>
+        <p class="hint">Si en Localidad dejaste "Todas", compara todas las localidades entre sí; si elegís una localidad específica, muestra solo esa.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Localidad</th><th>Monto facturado</th><th>% del total</th><th>Clientes que compraron</th><th>% penetración</th></tr></thead>
+            <tbody id="vtaAnalisisLocalidadTbody"></tbody>
+          </table>
+        </div>
+        <div class="grid-2" id="vtaAnalisisLocalidadGraficosGrid">
+          <div class="card" id="vtaAnalisisRepartoCard">
+            <h4>Reparto por Localidad (%)</h4>
+            <p class="hint">Solo tiene sentido comparando varias localidades — se oculta si elegiste una sola arriba.</p>
+            <div class="chart-box"><canvas id="chartAnalisisLocalidadTorta"></canvas></div>
+            <div class="dash-leyenda-subrubro" id="vtaAnalisisLocalidadLeyenda"></div>
+          </div>
+          <div class="card">
+            <h4>Monto por Localidad</h4>
+            <div class="chart-box"><canvas id="chartAnalisisLocalidadBarras"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card" style="max-width:340px; margin:16px auto 0;">
+          <h4 id="vtaAnalisisPenetracionTitulo">% de clientes que compran</h4>
+          <div class="chart-box"><canvas id="chartAnalisisPenetracion"></canvas></div>
+          <div class="dash-leyenda-subrubro" id="vtaAnalisisPenetracionLeyenda"></div>
+        </div>
+
+        <h4 style="margin-top:24px;">🧭 Clientes que no compran (en esta selección)</h4>
+        <p class="hint">Incluye prospectos que nunca nos compraron, clientes que dejaron de comprarnos, y clientes activos sin ventas en el período/filtro elegido arriba — para armar una ruta de visitas.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Localidad</th><th>Cliente</th><th>Estado</th><th>Teléfono</th></tr></thead>
+            <tbody id="vtaAnalisisNoComprantTbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
