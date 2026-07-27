@@ -5703,6 +5703,35 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
     </tr>
   `).join('') || '<tr><td colspan="5" class="hint">No hay clientes con localidad cargada.</td></tr>';
 
+  // Torta de penetración: sobre el total de clientes de la selección (todas
+  // las localidades, o solo la elegida), qué porcentaje compró en este
+  // período/filtro contra el que no compró nada.
+  const totalClientesSeleccion = clientesRelevantes.length;
+  const totalCompradoresSeleccion = new Set(ventasFiltradas.map(v => v.cliente_id)).size;
+  const totalNoCompranSeleccion = Math.max(0, totalClientesSeleccion - totalCompradoresSeleccion);
+  document.getElementById('vtaAnalisisPenetracionTitulo').textContent =
+    `% de clientes que compran${localidadSeleccionada ? ' — ' + localidadSeleccionada : ' (todas las localidades)'}`;
+  destruirChart('chartAnalisisPenetracion');
+  vtaChartsInstancias.chartAnalisisPenetracion = new Chart(document.getElementById('chartAnalisisPenetracion'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Nos compran', 'No nos compran'],
+      datasets: [{ data: [totalCompradoresSeleccion, totalNoCompranSeleccion], backgroundColor: ['#2e7d32', '#e8543c'] }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.parsed} (${totalClientesSeleccion > 0 ? ((ctx.parsed / totalClientesSeleccion) * 100).toFixed(0) : 0}%)` } },
+      },
+    },
+  });
+  document.getElementById('vtaAnalisisPenetracionLeyenda').innerHTML = totalClientesSeleccion > 0 ? `
+    <div class="dash-leyenda-item"><span class="dash-leyenda-color" style="background:#2e7d32"></span>Nos compran: ${totalCompradoresSeleccion} (${((totalCompradoresSeleccion / totalClientesSeleccion) * 100).toFixed(0)}%)</div>
+    <div class="dash-leyenda-item"><span class="dash-leyenda-color" style="background:#e8543c"></span>No nos compran: ${totalNoCompranSeleccion} (${((totalNoCompranSeleccion / totalClientesSeleccion) * 100).toFixed(0)}%)</div>
+  ` : '<span class="hint">No hay clientes cargados en esta selección.</span>';
+
   destruirChart('chartAnalisisLocalidadTorta');
   vtaChartsInstancias.chartAnalisisLocalidadTorta = new Chart(document.getElementById('chartAnalisisLocalidadTorta'), {
     type: 'doughnut',
