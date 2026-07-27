@@ -2216,7 +2216,10 @@ async function refreshLocalidadesLogistica() {
 
 function poblarSelectLocalidadEn(selectId, valorActual) {
   const sel = document.getElementById(selectId);
-  const nombres = [...localidadesLogistica];
+  // Junta las localidades del maestro de Logística con las que ya se usaron
+  // en Clientes acá — así el desplegable no queda vacío si Logística no
+  // tiene el dato, o si el cliente cargó una localidad que Logística no tiene.
+  const nombres = [...new Set([...localidadesLogistica, ...cache.clientes.map(c => c.localidad).filter(Boolean)])].sort();
   if (valorActual && !nombres.includes(valorActual)) nombres.unshift(valorActual);
   sel.innerHTML = '<option value="">Sin definir</option>' +
     nombres.map(n => `<option value="${n}">${n}</option>`).join('') +
