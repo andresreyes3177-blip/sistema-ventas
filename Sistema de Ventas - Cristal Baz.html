@@ -2295,7 +2295,7 @@ document.getElementById('btnGuardarCliente').addEventListener('click', async () 
   const razon_social = document.getElementById('clRazonSocial').value.trim();
   if (!razon_social) { alert('Falta la razón social.'); return; }
   const localidadSel = document.getElementById('clLocalidad').value;
-  const localidad = localidadSel === '__otra__' ? document.getElementById('clLocalidadOtra').value.trim() : localidadSel;
+  const localidad = localidadSel === '__otra__' ? document.getElementById('clLocalidadOtra').value.trim().toUpperCase() : localidadSel;
   const payload = {
     razon_social,
     localidad: localidad || null,
