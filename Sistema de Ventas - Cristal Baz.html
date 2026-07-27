@@ -181,9 +181,35 @@
     .header-flex { padding: 22px 20px 24px; }
     .field { min-width: 100%; }
   }
+  .global-loading {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 9999;
+    background: var(--navy);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    box-shadow: 0 3px 10px rgba(0,0,0,.25);
+  }
+  .global-loading.mostrar { display: flex; }
+  .global-loading .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: girarSpinner 0.8s linear infinite;
+  }
+  @keyframes girarSpinner { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
+<div id="globalLoadingIndicator" class="global-loading"><span class="spinner"></span> Cargando datos...</div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
