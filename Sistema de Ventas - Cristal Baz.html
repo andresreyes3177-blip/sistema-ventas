@@ -6218,6 +6218,9 @@ async function abrirRankingCliente(clienteId) {
   `).join('') || '<span class="hint">Importá el catálogo para poder filtrar por Subrubro.</span>';
   document.getElementById('vtaRankingVerSoloSubrubro').innerHTML = '<option value="">Elegí para aislar uno...</option>' + subrubros.map(s => `<option value="${s}">${s}</option>`).join('');
 
+  const rubros = [...new Set(cache.articulos.map(a => a.rubro).filter(Boolean))].sort();
+  document.getElementById('vtaRankingVerSoloRubro').innerHTML = '<option value="">Elegí para aislar uno...</option>' + rubros.map(r => `<option value="${r}">${r}</option>`).join('');
+
   renderVtaRankingArticulosFiltro();
   await asegurarVentasDetalladas();
   renderVtaRanking();
