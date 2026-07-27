@@ -5556,17 +5556,24 @@ document.getElementById('btnVtaAnalisisGenerar').addEventListener('click', async
 // localidad compraron sobre el total de clientes que tiene.
 document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', async () => {
   await asegurarVentasDetalladas();
-  const ventasFiltradas = calcularVentasFiltradasAnalisis(cache.clientes, false);
+  // Si arriba se eligió una localidad específica (no "Todas"), esta vista
+  // respeta esa elección y muestra solo esa localidad. Si quedó en "Todas",
+  // compara todas entre sí como hasta ahora.
+  const localidadSeleccionada = document.getElementById('vtaAnalisisLocalidad').value;
+  const ventasFiltradas = calcularVentasFiltradasAnalisis(cache.clientes, !!localidadSeleccionada);
+  const clientesRelevantes = localidadSeleccionada
+    ? cache.clientes.filter(c => (c.localidad || 'Sin localidad') === localidadSeleccionada)
+    : cache.clientes;
 
   const clientesPorLocalidad = {};
-  cache.clientes.forEach(c => {
+  clientesRelevantes.forEach(c => {
     const loc = c.localidad || 'Sin localidad';
     if (!clientesPorLocalidad[loc]) clientesPorLocalidad[loc] = new Set();
     clientesPorLocalidad[loc].add(c.id);
   });
 
   const clientesPorId = {};
-  cache.clientes.forEach(c => { clientesPorId[c.id] = c; });
+  clientesRelevantes.forEach(c => { clientesPorId[c.id] = c; });
 
   const montoPorLocalidad = {};
   const compradoresPorLocalidad = {};
