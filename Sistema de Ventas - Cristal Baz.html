@@ -1626,7 +1626,7 @@ function buscarClienteFlexible(nombre, localidad) {
   return null;
 }
 
-const DB = {
+const DB_RAW = {
   listClientes: async () => { const { data, error } = await sb.from('clientes').select('*').order('razon_social'); if (error) throw error; return data; },
   createCliente: async (payload) => { const { error } = await sb.from('clientes').insert(payload); if (error) throw error; },
   updateCliente: async (id, payload) => { const { error } = await sb.from('clientes').update(payload).eq('id', id); if (error) throw error; },
