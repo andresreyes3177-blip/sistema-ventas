@@ -5694,6 +5694,12 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
     totalClientes: clientesPorLocalidad[loc].size,
   })).sort((a, b) => b.monto - a.monto);
 
+  // Con una sola localidad elegida, la torta de "Reparto por Localidad" da
+  // siempre un único círculo al 100% (no hay nada más con qué compararla) —
+  // se oculta para no confundir, y el gráfico de Monto queda solo.
+  document.getElementById('vtaAnalisisRepartoCard').style.display = localidadSeleccionada ? 'none' : 'block';
+  document.getElementById('vtaAnalisisLocalidadGraficosGrid').style.display = localidadSeleccionada ? 'block' : 'grid';
+
   document.getElementById('vtaAnalisisLocalidadTbody').innerHTML = filas.map(f => `
     <tr${f.monto === 0 ? ' style="color:var(--red);"' : ''}>
       <td>${f.localidad}</td>
