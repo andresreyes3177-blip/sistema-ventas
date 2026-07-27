@@ -5582,11 +5582,10 @@ document.getElementById('vtaAnalisisSubrubro').addEventListener('change', () => 
 // (tabla, otros gráficos) sigue respetando esa sucursal elegida arriba,
 // por eso el valor por defecto es cache.clientes (ya acotado a esa) y no
 // cache.clientesTodos.
-// aplicarLocalidad en false lo usan el botón "Ver por Localidad" y la
-// Comparación entre Sucursales — ambos quieren comparar TODAS las
-// localidades/sucursales entre sí, así que ignoran a propósito el filtro de
-// Localidad de arriba (si no, comparar "todas contra todas" no tendría sentido
-// estando ya acotado a una sola).
+// aplicarLocalidad en false lo usa la Comparación entre Sucursales, que
+// quiere comparar TODAS las sucursales entre sí, así que ignora a propósito
+// el filtro de Localidad de arriba (si no, comparar "todas contra todas" no
+// tendría sentido estando ya acotado a una sola).
 function calcularVentasFiltradasAnalisis(clientesBase, aplicarLocalidad) {
   const grupo = document.getElementById('vtaAnalisisGrupo').value;
   const rubro = document.getElementById('vtaAnalisisRubro').value;
