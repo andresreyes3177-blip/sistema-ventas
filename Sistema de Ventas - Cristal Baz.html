@@ -5593,8 +5593,9 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
       <td>${FORMATO_PESOS(f.monto)}</td>
       <td>${f.porcentaje.toFixed(1)}%</td>
       <td>${f.compradores} de ${f.totalClientes}</td>
+      <td>${f.totalClientes > 0 ? ((f.compradores / f.totalClientes) * 100).toFixed(0) : 0}%</td>
     </tr>
-  `).join('') || '<tr><td colspan="4" class="hint">No hay clientes con localidad cargada.</td></tr>';
+  `).join('') || '<tr><td colspan="5" class="hint">No hay clientes con localidad cargada.</td></tr>';
 
   destruirChart('chartAnalisisLocalidadTorta');
   vtaChartsInstancias.chartAnalisisLocalidadTorta = new Chart(document.getElementById('chartAnalisisLocalidadTorta'), {
