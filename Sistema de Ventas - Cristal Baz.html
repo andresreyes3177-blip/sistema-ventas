@@ -5616,6 +5616,28 @@ function calcularVentasFiltradasAnalisis(clientesBase, aplicarLocalidad) {
   });
 }
 
+// Para el Dashboard de Localidad, ahora en "Historial de Ventas por Zonas y
+// Clientes" — a propósito NO usa los filtros de Grupo/Rubro/Subrubro/Artículo
+// de "Análisis de Artículos Vendidos" (son de otra pantalla): solo Localidad
+// y fechas, propios de este panel.
+function calcularVentasFiltradasPorZona(clientesBase, aplicarLocalidad) {
+  const localidad = aplicarLocalidad === false ? '' : document.getElementById('vtaResumenLocalidad').value;
+  const desde = document.getElementById('vtaResumenLocDesde').value;
+  const hasta = document.getElementById('vtaResumenLocHasta').value;
+  const clientesBaseUsado = clientesBase || cache.clientes;
+  const idsPermitidos = new Set(clientesBaseUsado.map(c => c.id));
+  const clientesPorId = {};
+  clientesBaseUsado.forEach(c => { clientesPorId[c.id] = c; });
+
+  return cache.ventas.filter(v => {
+    if (!v.articulo_id || !idsPermitidos.has(v.cliente_id)) return false;
+    if (desde && v.fecha < desde) return false;
+    if (hasta && v.fecha > hasta) return false;
+    if (localidad && (clientesPorId[v.cliente_id] || {}).localidad !== localidad) return false;
+    return true;
+  });
+}
+
 document.getElementById('btnVtaAnalisisGenerar').addEventListener('click', async () => {
   await asegurarVentasDetalladas();
   document.getElementById('vtaAnalisisLocalidadWrap').style.display = 'none';
