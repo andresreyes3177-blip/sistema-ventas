@@ -5687,8 +5687,8 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
   // Si arriba se eligió una localidad específica (no "Todas"), esta vista
   // respeta esa elección y muestra solo esa localidad. Si quedó en "Todas",
   // compara todas entre sí como hasta ahora.
-  const localidadSeleccionada = document.getElementById('vtaAnalisisLocalidad').value;
-  const ventasFiltradas = calcularVentasFiltradasAnalisis(cache.clientes, !!localidadSeleccionada);
+  const localidadSeleccionada = document.getElementById('vtaResumenLocalidad').value;
+  const ventasFiltradas = calcularVentasFiltradasPorZona(cache.clientes, !!localidadSeleccionada);
   const clientesRelevantes = localidadSeleccionada
     ? cache.clientes.filter(c => (c.localidad || 'Sin localidad') === localidadSeleccionada)
     : cache.clientes;
