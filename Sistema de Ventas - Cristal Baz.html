@@ -6226,12 +6226,26 @@ async function abrirRankingCliente(clienteId) {
   renderVtaRanking();
 }
 
+// Mismo atajo que "Ver solo un Subrubro", pero un nivel más arriba: tilda
+// solo los Subrubros que pertenecen al Rubro elegido (destildando el resto),
+// y de ahí en más cascadea igual que si los hubieras tildado a mano.
+document.getElementById('vtaRankingVerSoloRubro').addEventListener('change', (e) => {
+  const rubro = e.target.value;
+  if (!rubro) return;
+  const subrubrosDelRubro = new Set(cache.articulos.filter(a => a.rubro === rubro).map(a => a.subrubro).filter(Boolean));
+  document.querySelectorAll('[data-vta-rank-subrubro]').forEach(chk => { chk.checked = subrubrosDelRubro.has(chk.value); });
+  document.getElementById('vtaRankingVerSoloSubrubro').value = '';
+  renderVtaRankingArticulosFiltro();
+  renderVtaRanking();
+});
+
 // Atajo: en vez de destildar todos los Subrubros menos uno a mano, elegís acá
 // y tilda solo ese (destildando el resto) — pensado para cuando querés
 // enfocarte en un Subrubro puntual sin perder los demás tildes si volvés atrás.
 document.getElementById('vtaRankingVerSoloSubrubro').addEventListener('change', (e) => {
   const subrubro = e.target.value;
   if (!subrubro) return;
+  document.getElementById('vtaRankingVerSoloRubro').value = '';
   document.querySelectorAll('[data-vta-rank-subrubro]').forEach(chk => { chk.checked = (chk.value === subrubro); });
   renderVtaRankingArticulosFiltro();
   renderVtaRanking();
