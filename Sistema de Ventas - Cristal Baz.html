@@ -2675,6 +2675,7 @@ document.getElementById('btnVtaManualAgregar').addEventListener('click', async (
     document.getElementById('vtaManualCantidad').value = 1;
     document.getElementById('vtaManualMonto').value = '';
     await refreshVentasCache();
+    ventasClienteFichaActual = await DB.listVentasCliente(modalClienteId);
     renderHistorialVentasCliente(modalClienteId);
     renderClientes();
     alert('Venta agregada correctamente.');
