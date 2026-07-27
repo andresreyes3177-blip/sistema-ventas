@@ -1831,6 +1831,15 @@ const DB = {
     }
     return todas;
   },
+  // Solo las ventas de UN cliente puntual — para su ficha, que antes pedía
+  // asegurarVentasDetalladas() (el historial COMPLETO de TODOS los clientes)
+  // solo para filtrar después las de uno solo. Acotado así, abrir una ficha
+  // no se pone más lento a medida que crece el historial general.
+  listVentasCliente: async (clienteId) => {
+    const { data, error } = await sb.from('ventas').select('cliente_id, articulo_id, fecha, cantidad, monto').eq('cliente_id', clienteId).order('fecha', { ascending: false });
+    if (error) throw error;
+    return data;
+  },
   // Solo las ventas del mes en curso, con articulo_id — para las "Metas por
   // Subrubro/Artículo" del Dashboard, que antes pedían asegurarVentasDetalladas()
   // (el historial COMPLETO de ventas) solo para quedarse con el mes actual.
