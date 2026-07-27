@@ -2205,12 +2205,12 @@ document.getElementById('btnEliminarSeleccionados').addEventListener('click', as
   } catch (e) { reportError(e); }
 });
 
-['clienteBuscar','filtroLocalidad','filtroContactoDesde','filtroContactoHasta','filtroConsumoDesde','filtroConsumoHasta'].forEach(id => {
+['clienteBuscar','filtroLocalidad','filtroContactoDesde','filtroContactoHasta','filtroConsumoDesde','filtroConsumoHasta','filtroEstadoComercial'].forEach(id => {
   document.getElementById(id).addEventListener('input', renderClientes);
   document.getElementById(id).addEventListener('change', renderClientes);
 });
 document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
-  ['clienteBuscar','filtroLocalidad','filtroContactoDesde','filtroContactoHasta','filtroConsumoDesde','filtroConsumoHasta'].forEach(id => document.getElementById(id).value = '');
+  ['clienteBuscar','filtroLocalidad','filtroContactoDesde','filtroContactoHasta','filtroConsumoDesde','filtroConsumoHasta','filtroEstadoComercial'].forEach(id => document.getElementById(id).value = '');
   renderClientes();
 });
 
