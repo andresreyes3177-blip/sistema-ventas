@@ -5632,7 +5632,7 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
   });
 
   const ESTADO_COMERCIAL_LABEL = { cliente: 'Cliente activo', prospecto: 'Prospecto (nunca compró)', perdido: 'Dejó de comprar' };
-  const noCompran = cache.clientes
+  const noCompran = clientesRelevantes
     .filter(c => {
       const loc = c.localidad || 'Sin localidad';
       return !(compradoresPorLocalidad[loc] && compradoresPorLocalidad[loc].has(c.id));
