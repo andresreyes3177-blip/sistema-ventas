@@ -5691,6 +5691,12 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
   `).join('') || '<tr><td colspan="4" class="hint">Todos los clientes compraron en esta selección.</td></tr>';
 
   document.getElementById('vtaAnalisisLocalidadWrap').style.display = 'block';
+  } catch (e) {
+    reportError(e);
+  } finally {
+    btnLoc.disabled = false;
+    btnLoc.textContent = textoOriginalBtn;
+  }
 });
 
 // Listado de cantidad vendida y monto facturado por Artículo, para la
