@@ -574,6 +574,15 @@
       <div class="field-row">
         <div class="field"><label>Consumo del mes — desde</label><input type="number" id="filtroConsumoDesde" placeholder="0"></div>
         <div class="field"><label>Consumo del mes — hasta</label><input type="number" id="filtroConsumoHasta" placeholder="sin tope"></div>
+        <div class="field"><label>Estado comercial</label>
+          <select id="filtroEstadoComercial">
+            <option value="">Todos</option>
+            <option value="cliente">Solo clientes activos</option>
+            <option value="no_activo">Solo no activos (prospecto/perdido)</option>
+            <option value="prospecto">Solo prospectos</option>
+            <option value="perdido">Solo perdidos</option>
+          </select>
+        </div>
         <div class="field"><label>&nbsp;</label><button class="btn-secondary" id="btnLimpiarFiltros" style="width:100%;">Limpiar filtros</button></div>
       </div>
 
