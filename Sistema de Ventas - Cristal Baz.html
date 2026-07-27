@@ -5624,6 +5624,23 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
     },
   });
 
+  const ESTADO_COMERCIAL_LABEL = { cliente: 'Cliente activo', prospecto: 'Prospecto (nunca compró)', perdido: 'Dejó de comprar' };
+  const noCompran = cache.clientes
+    .filter(c => {
+      const loc = c.localidad || 'Sin localidad';
+      return !(compradoresPorLocalidad[loc] && compradoresPorLocalidad[loc].has(c.id));
+    })
+    .sort((a, b) => (a.localidad || '').localeCompare(b.localidad || '') || (a.razon_social || '').localeCompare(b.razon_social || ''));
+
+  document.getElementById('vtaAnalisisNoComprantTbody').innerHTML = noCompran.map(c => `
+    <tr>
+      <td>${c.localidad || 'Sin localidad'}</td>
+      <td>${c.razon_social}</td>
+      <td>${ESTADO_COMERCIAL_LABEL[c.estado_comercial] || 'Cliente activo'}</td>
+      <td>${c.telefono || '-'}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" class="hint">Todos los clientes compraron en esta selección.</td></tr>';
+
   document.getElementById('vtaAnalisisLocalidadWrap').style.display = 'block';
 });
 
