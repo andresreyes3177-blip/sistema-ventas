@@ -2524,6 +2524,7 @@ document.getElementById('btnConfirmarImportarClientes').addEventListener('click'
 });
 
 // ---------------- Modal cliente (tags + contactos) ----------------
+let ventasClienteFichaActual = []; // ventas de SOLO el cliente que está abierto en la ficha
 async function openClienteModal(clienteId) {
   modalClienteId = clienteId;
   const cliente = cache.clientes.find(c => c.id === clienteId);
