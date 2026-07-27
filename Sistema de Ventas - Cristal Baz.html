@@ -2104,11 +2104,14 @@ function renderClientes() {
   const contactoHasta = document.getElementById('filtroContactoHasta').value;
   const consumoDesde = document.getElementById('filtroConsumoDesde').value;
   const consumoHasta = document.getElementById('filtroConsumoHasta').value;
+  const estadoComercialFiltro = document.getElementById('filtroEstadoComercial').value;
   const tbody = document.getElementById('clientesTbody');
 
   refreshFiltroLocalidad();
   let lista = cache.clientes.filter(c => c.razon_social.toLowerCase().includes(filtro));
   if (localidadFiltro) lista = lista.filter(c => c.localidad === localidadFiltro);
+  if (estadoComercialFiltro === 'no_activo') lista = lista.filter(c => c.estado_comercial && c.estado_comercial !== 'cliente');
+  else if (estadoComercialFiltro) lista = lista.filter(c => (c.estado_comercial || 'cliente') === estadoComercialFiltro);
 
   if (contactoDesde || contactoHasta) {
     lista = lista.filter(c => {
