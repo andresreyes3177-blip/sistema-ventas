@@ -2580,7 +2580,7 @@ async function openClienteModal(clienteId) {
 // total de ese mes), y al hacer clic se despliega el detalle de Fecha,
 // Subrubro, Artículo, Cantidad y Monto de cada venta de ese mes puntual.
 function renderHistorialVentasCliente(clienteId) {
-  const ventasCliente = cache.ventas
+  const ventasCliente = ventasClienteFichaActual
     .filter(v => v.cliente_id === clienteId && v.articulo_id)
     .slice()
     .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
