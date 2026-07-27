@@ -2145,12 +2145,16 @@ function renderClientes() {
     const ultimoContacto = cache.ultimoContactoPorCliente[c.id];
     const ultimoContactoHtml = ultimoContacto ? new Date(ultimoContacto).toLocaleDateString('es-AR') : '<span class="hint">Sin contactar</span>';
     const marcado = clientesSeleccionados.has(c.id);
-    return `<tr>
+    const estadoComercial = c.estado_comercial || 'cliente';
+    const noEsClienteActivo = estadoComercial !== 'cliente';
+    const filaStyle = estadoComercial === 'prospecto' ? ' style="background:#fff6e0;"' : estadoComercial === 'perdido' ? ' style="background:#fde8e6;"' : '';
+    const estadoBadge = estadoComercial === 'prospecto' ? '<span class="badge badge-orange">Prospecto</span>' : estadoComercial === 'perdido' ? '<span class="badge badge-red">Perdido</span>' : '';
+    return `<tr${filaStyle}>
       <td><input type="checkbox" data-check-cliente="${c.id}" ${marcado ? 'checked' : ''}></td>
-      <td>${c.razon_social}</td>
+      <td>${c.razon_social}${estadoBadge ? ' ' + estadoBadge : ''}</td>
       <td>${c.localidad || '<span class="hint">Sin definir</span>'}</td>
-      <td>$${consumoMes.toLocaleString('es-AR')}</td>
-      <td>${pctHtml}</td>
+      <td>${noEsClienteActivo ? '<span class="hint">—</span>' : '$' + consumoMes.toLocaleString('es-AR')}</td>
+      <td>${noEsClienteActivo ? '<span class="hint">—</span>' : pctHtml}</td>
       <td>${ultimoContactoHtml}</td>
       <td>${tagsHtml || '<span class="hint">Sin tags</span>'}</td>
       <td>
