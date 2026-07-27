@@ -2676,7 +2676,7 @@ document.getElementById('btnGuardarDatosCliente').addEventListener('click', asyn
   const razon_social = document.getElementById('edClRazonSocial').value.trim();
   if (!razon_social) { alert('Falta la razón social.'); return; }
   const localidadSel = document.getElementById('edClLocalidad').value;
-  const localidad = localidadSel === '__otra__' ? document.getElementById('edClLocalidadOtra').value.trim() : localidadSel;
+  const localidad = localidadSel === '__otra__' ? document.getElementById('edClLocalidadOtra').value.trim().toUpperCase() : localidadSel;
   try {
     await DB.updateCliente(modalClienteId, {
       razon_social,
