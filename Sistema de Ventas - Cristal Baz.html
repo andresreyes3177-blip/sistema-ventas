@@ -5585,7 +5585,19 @@ document.getElementById('btnVtaAnalisisGenerar').addEventListener('click', async
 // dónde NO nos compran — arma monto, % del total y cuántos clientes de esa
 // localidad compraron sobre el total de clientes que tiene.
 document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', async () => {
-  await asegurarVentasDetalladas();
+  const btnLoc = document.getElementById('btnVtaAnalisisPorLocalidad');
+  const textoOriginalBtn = btnLoc.textContent;
+  btnLoc.disabled = true;
+  btnLoc.textContent = 'Cargando...';
+  try {
+    await asegurarVentasDetalladas();
+  } catch (e) {
+    btnLoc.disabled = false;
+    btnLoc.textContent = textoOriginalBtn;
+    reportError(e);
+    return;
+  }
+  try {
   // Si arriba se eligió una localidad específica (no "Todas"), esta vista
   // respeta esa elección y muestra solo esa localidad. Si quedó en "Todas",
   // compara todas entre sí como hasta ahora.
