@@ -1202,7 +1202,7 @@
         <p class="hint">Usa los mismos filtros de Grupo/Rubro/Subrubro/Artículo y fechas de arriba (ignora el filtro de Localidad, porque acá la idea es comparar todas entre sí) — muestra cada localidad con clientes cargados, incluidas las que no compraron nada en esta selección, para que se note fácil dónde hay oportunidad.</p>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Localidad</th><th>Monto facturado</th><th>% del total</th><th>Clientes que compraron</th></tr></thead>
+            <thead><tr><th>Localidad</th><th>Monto facturado</th><th>% del total</th><th>Clientes que compraron</th><th>% penetración</th></tr></thead>
             <tbody id="vtaAnalisisLocalidadTbody"></tbody>
           </table>
         </div>
@@ -1216,6 +1216,15 @@
             <h4>Monto por Localidad</h4>
             <div class="chart-box"><canvas id="chartAnalisisLocalidadBarras"></canvas></div>
           </div>
+        </div>
+
+        <h3 style="margin-top:24px;">🧭 Clientes que no compran (en esta selección)</h3>
+        <p class="hint">Incluye prospectos que nunca nos compraron, clientes que dejaron de comprarnos, y clientes activos sin ventas en el período/filtro elegido arriba — para armar una ruta de visitas.</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Localidad</th><th>Cliente</th><th>Estado</th><th>Teléfono</th></tr></thead>
+            <tbody id="vtaAnalisisNoComprantTbody"></tbody>
+          </table>
         </div>
       </div>
     </div>
