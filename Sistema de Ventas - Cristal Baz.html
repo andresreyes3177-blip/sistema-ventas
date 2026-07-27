@@ -3480,7 +3480,7 @@ async function cargarSubrubrosRelacionadosConArticulos() {
 // compró. No genera ninguna alerta — se calcula al vuelo, solo al abrir la ficha.
 function calcularSugerenciasCrosssell(clienteId) {
   const articulosCompradosPorCliente = new Set(
-    cache.ventas.filter(v => v.cliente_id === clienteId && v.articulo_id).map(v => v.articulo_id)
+    ventasClienteFichaActual.filter(v => v.cliente_id === clienteId && v.articulo_id).map(v => v.articulo_id)
   );
   if (!articulosCompradosPorCliente.size) return [];
 
