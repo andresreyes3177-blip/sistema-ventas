@@ -769,6 +769,29 @@
       </div>
     </div>
 
+    <div class="card" id="costosImportCard" style="display:none; border-color:var(--red);">
+      <h2 style="color:var(--red);">💰 Importar costos</h2>
+      <p class="hint">Solo vos ves esto. Subí un Excel con columnas <strong>Código</strong> (o Artículo) y <strong>Costo USD</strong> y/o <strong>Costo ARS</strong> — el que corresponda según el artículo (los productos suelen ir en USD, los servicios/administrativo en ARS directo). Matchea por Código primero, y si no lo encuentra, por nombre exacto.</p>
+      <div class="file-drop">
+        📄 Arrastrá o seleccioná el Excel de costos
+        <br><input type="file" id="fileCostos" accept=".xlsx,.xls,.csv">
+      </div>
+      <div id="costosPreviewWrap" style="display:none;">
+        <h3>Vista previa (<span id="costosPreviewCount">0</span> filas)</h3>
+        <p class="hint" id="costosSinMatchHint"></p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Código/Artículo</th><th>Artículo encontrado</th><th>Costo USD</th><th>Costo ARS</th></tr></thead>
+            <tbody id="costosPreviewTbody"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" id="btnConfirmarImportarCostos">Confirmar e importar</button>
+          <button class="btn-secondary" id="btnCancelarImportarCostos">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Artículos ya cargados</h2>
       <p><span id="articulosCount">0</span> artículos en el catálogo<span id="articulosFiltradosHint"></span>.</p>
@@ -781,7 +804,7 @@
       </div>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>Código</th><th>Artículo</th><th>Grupo</th><th>Rubro</th><th>Subrubro</th><th></th></tr></thead>
+          <thead><tr><th>Código</th><th>Artículo</th><th>Grupo</th><th>Rubro</th><th>Subrubro</th><th class="th-costo" style="display:none;">Costo USD</th><th class="th-costo" style="display:none;">Costo ARS</th><th></th></tr></thead>
           <tbody id="articulosTbody"></tbody>
         </table>
       </div>
