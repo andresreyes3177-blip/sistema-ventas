@@ -1645,7 +1645,7 @@ document.getElementById('sessionBuildVersion').textContent = BUILD_VERSION;
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentProfile = null;
-let cache = { clientes: [], clientesTodos: [], tags: [], articulos: [], subrubrosRelacionados: [], clienteTagsPorCliente: {}, sucursales: [], profiles: [], profileSucursales: [], misSucursales: [], campanias: [], ventas: [], consumoPorClienteMes: {}, ultimoContactoPorCliente: {}, configuracionAlertas: null, visitasLocalidad: [], metasProducto: [] };
+let cache = { clientes: [], clientesTodos: [], tags: [], articulos: [], subrubrosRelacionados: [], clienteTagsPorCliente: {}, sucursales: [], profiles: [], profileSucursales: [], misSucursales: [], campanias: [], ventas: [], consumoPorClienteMes: {}, ultimoContactoPorCliente: {}, configuracionAlertas: null, visitasLocalidad: [], metasProducto: [], costosPorArticulo: {}, cotizacionesDolar: [] };
 let sucursalActivaId = localStorage.getItem('sv_sucursal_activa') || '__todas__';
 let modalClienteId = null;
 let intOfrecidosSeleccionados = []; // artículos elegidos para "¿Qué se le ofreció?" del contacto en curso — [{id, nombre, subrubro}]
