@@ -6828,6 +6828,7 @@ document.getElementById('btnVentasBorrarConfirmar').addEventListener('click', as
     const articuloIds = articuloIdsParaBorrarVentas();
     await DB.deleteVentasPorFiltro({ desde, hasta, clienteId: clienteId || null, articuloIds });
     await refreshVentasCache();
+    invalidarVentasDetalladas();
     document.getElementById('ventasBorrarResumen').textContent = `Listo, se borraron ${cantidadFilas} venta(s).`;
     wrap.style.display = 'none';
     alert('Ventas borradas correctamente. Ya podés volver a importar el archivo correcto.');
