@@ -6125,6 +6125,40 @@ function renderChartAnalisisDistribucion(ventasFiltradas) {
   `).join('');
 }
 
+// A diferencia de "Distribución interna" (que cambia de nivel según el
+// filtro más específico elegido), esta torta siempre desglosa por Grupo —
+// para ver, sea cual sea el filtro de arriba, qué porcentaje de lo vendido
+// corresponde a Cristales, Armazones, Servicios, etc.
+let vtaAnalisisGrupoDatos = [];
+function renderChartAnalisisGrupo(ventasFiltradas) {
+  const articulosPorId = {};
+  cache.articulos.forEach(a => { articulosPorId[a.id] = a; });
+
+  const porGrupo = {};
+  ventasFiltradas.forEach(v => {
+    const a = articulosPorId[v.articulo_id];
+    const grupo = a ? (a.grupo || 'Sin grupo') : 'Sin grupo';
+    porGrupo[grupo] = (porGrupo[grupo] || 0) + Number(v.monto || 0);
+  });
+  const filas = Object.entries(porGrupo).map(([grupo, monto]) => ({ grupo, monto })).sort((a, b) => b.monto - a.monto);
+  const total = filas.reduce((s, f) => s + f.monto, 0);
+  vtaAnalisisGrupoDatos = filas;
+
+  destruirChart('chartAnalisisGrupo');
+  vtaChartsInstancias.chartAnalisisGrupo = new Chart(document.getElementById('chartAnalisisGrupo'), {
+    type: 'doughnut',
+    data: { labels: filas.map(f => f.grupo), datasets: [{ data: filas.map(f => f.monto), backgroundColor: PALETA_GRAFICOS }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${FORMATO_PESOS(ctx.parsed)}` } } },
+    },
+  });
+  document.getElementById('vtaAnalisisGrupoLeyenda').innerHTML = filas.map((f, i) => `
+    <div class="dash-leyenda-item"><span class="dash-leyenda-color" style="background:${PALETA_GRAFICOS[i % PALETA_GRAFICOS.length]}"></span>${f.grupo} (${total > 0 ? Math.round((f.monto / total) * 100) : 0}%)</div>
+  `).join('');
+}
+
 // Alertas de caída de consumo — se arman solas cada 15 días del lado de la
 // base de datos (migración 22); acá solo se muestran y se pueden marcar
 // como resueltas.
