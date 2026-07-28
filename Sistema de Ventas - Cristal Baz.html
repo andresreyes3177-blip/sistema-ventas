@@ -2164,6 +2164,10 @@ function asegurarVentasDetalladas() {
   }
   return vtaVentasDetalladasPromise;
 }
+// Llamar solo donde realmente cambian filas de la tabla ventas (importar,
+// agregar venta manual, borrar un período) — así la próxima pantalla que
+// pida el detalle lo trae de nuevo con los cambios ya adentro.
+function invalidarVentasDetalladas() { vtaVentasDetalladasPromise = null; }
 
 async function refreshUltimosContactos() {
   const filas = await DB.listUltimosContactos();
