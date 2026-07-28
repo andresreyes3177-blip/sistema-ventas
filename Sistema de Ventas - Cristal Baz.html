@@ -2805,6 +2805,7 @@ document.getElementById('btnVtaManualAgregar').addEventListener('click', async (
     document.getElementById('vtaManualCantidad').value = 1;
     document.getElementById('vtaManualMonto').value = '';
     await refreshVentasCache();
+    invalidarVentasDetalladas();
     ventasClienteFichaActual = await DB.listVentasCliente(modalClienteId);
     renderHistorialVentasCliente(modalClienteId);
     renderClientes();
