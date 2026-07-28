@@ -3449,6 +3449,90 @@ document.getElementById('btnLimpiarFiltrosCatalogo').addEventListener('click', (
   renderArticulosFiltrados();
 });
 
+// ---------------- Importar costos (solo Rentabilidad) ----------------
+let costosParaImportar = [];
+document.getElementById('fileCostos').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onerror = () => { alert('No pude leer el archivo. Probá guardarlo de nuevo y volvé a intentar.'); };
+  reader.onload = async (evt) => {
+    try {
+      const buffer = await sanearXlsxSiHaceFalta(evt.target.result);
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
+      if (!rows.length) { alert('El archivo está vacío.'); return; }
+      const headers = rows[0].map(normalizarHeader);
+      const idx = (nombre) => headers.findIndex(h => h.includes(nombre));
+      const cCodigo = idx('codigo');
+      const cArticulo = idx('articulo');
+      const cUsd = headers.findIndex(h => h.includes('usd') || h.includes('dolar'));
+      const cArs = headers.findIndex(h => h.includes('ars') || (h.includes('peso')));
+      if (cCodigo < 0 && cArticulo < 0) { alert('No pude encontrar la columna Código ni Artículo.'); return; }
+      if (cUsd < 0 && cArs < 0) { alert('No pude encontrar ninguna columna de Costo USD o Costo ARS.'); return; }
+
+      costosParaImportar = rows.slice(1)
+        .filter(r => (cCodigo >= 0 && r[cCodigo]) || (cArticulo >= 0 && r[cArticulo]))
+        .map(r => {
+          const codigo = cCodigo >= 0 ? (r[cCodigo] || '').toString().trim() : '';
+          const nombreArchivo = cArticulo >= 0 ? (r[cArticulo] || '').toString().trim() : '';
+          const articulo = (codigo && cache.articulos.find(a => a.codigo_erp.trim().toLowerCase() === codigo.toLowerCase()))
+            || cache.articulos.find(a => normalizarTexto(a.nombre) === normalizarTexto(nombreArchivo));
+          const costo_usd = cUsd >= 0 && r[cUsd] !== undefined && r[cUsd] !== '' ? parseNumeroPlano(r[cUsd]) : null;
+          const costo_ars = cArs >= 0 && r[cArs] !== undefined && r[cArs] !== '' ? parseNumeroPlano(r[cArs]) : null;
+          return { etiqueta: codigo || nombreArchivo, articulo, costo_usd, costo_ars };
+        })
+        .filter(f => f.costo_usd !== null || f.costo_ars !== null);
+
+      if (!costosParaImportar.length) { alert('No encontré filas con Costo USD o Costo ARS para importar.'); return; }
+      const sinMatch = costosParaImportar.filter(f => !f.articulo).length;
+      document.getElementById('costosPreviewCount').textContent = costosParaImportar.length;
+      document.getElementById('costosSinMatchHint').textContent = sinMatch
+        ? `⚠️ ${sinMatch} fila(s) no coinciden con ningún artículo del catálogo — se van a saltear.`
+        : 'Todas las filas coinciden con un artículo del catálogo.';
+      document.getElementById('costosPreviewTbody').innerHTML = costosParaImportar.slice(0, 100).map(f => `
+        <tr>
+          <td>${f.etiqueta}</td>
+          <td>${f.articulo ? f.articulo.nombre : '<span class="badge badge-orange">Sin coincidencia</span>'}</td>
+          <td>${f.costo_usd ?? '—'}</td>
+          <td>${f.costo_ars ?? '—'}</td>
+        </tr>
+      `).join('');
+      document.getElementById('costosPreviewWrap').style.display = 'block';
+    } catch (err) {
+      console.error(err);
+      alert('No pude leer este archivo como Excel. Detalle: ' + (err.message || err));
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('btnCancelarImportarCostos').addEventListener('click', () => {
+  costosParaImportar = [];
+  document.getElementById('costosPreviewWrap').style.display = 'none';
+  document.getElementById('fileCostos').value = '';
+});
+
+document.getElementById('btnConfirmarImportarCostos').addEventListener('click', async () => {
+  const validos = costosParaImportar.filter(f => f.articulo);
+  if (!validos.length) { alert('No hay filas con artículo reconocido para importar.'); return; }
+  const btn = document.getElementById('btnConfirmarImportarCostos');
+  btn.disabled = true;
+  try {
+    for (const f of validos) {
+      await DB.upsertCostoArticulo(f.articulo.id, { costo_usd: f.costo_usd, costo_ars: f.costo_ars });
+    }
+    await refreshRentabilidadCache();
+    renderArticulosFiltrados();
+    costosParaImportar = [];
+    document.getElementById('costosPreviewWrap').style.display = 'none';
+    document.getElementById('fileCostos').value = '';
+    alert(`Se cargaron los costos de ${validos.length} artículo(s).`);
+  } catch (e) { reportError(e); }
+  finally { btn.disabled = false; }
+});
+
 // ---------------- Opción 2: agregar un producto suelto, sin reemplazar nada ----------------
 document.getElementById('btnAgregarArticuloManual').addEventListener('click', async () => {
   const nombre = document.getElementById('manArticuloNombre').value.trim();
