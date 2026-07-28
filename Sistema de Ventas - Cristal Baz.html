@@ -3003,6 +3003,7 @@ document.getElementById('btnVtaManualAgregar').addEventListener('click', async (
     invalidarVentasDetalladas();
     ventasClienteFichaActual = await DB.listVentasCliente(modalClienteId);
     renderHistorialVentasCliente(modalClienteId);
+    renderFichaRentabilidad();
     renderClientes();
     alert('Venta agregada correctamente.');
   } catch (e) { reportError(e); }
