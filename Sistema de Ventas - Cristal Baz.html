@@ -1940,6 +1940,33 @@ const DB_RAW = {
     return todas;
   },
   insertVentas: async (rows) => { const { error } = await sb.from('ventas').insert(rows); if (error) throw error; },
+  // Para "Borrar ventas de un período" — busca (sin borrar) cuántas ventas y
+  // por cuánta plata coinciden con el filtro, así se puede revisar antes de
+  // confirmar el borrado. Fecha desde/hasta son obligatorias en la pantalla
+  // (nunca se llama esto sin rango de fechas).
+  buscarVentasPorFiltro: async ({ desde, hasta, clienteId, articuloIds }) => {
+    let query = sb.from('ventas').select('id, cantidad, monto').gte('fecha', desde).lte('fecha', hasta);
+    if (clienteId) query = query.eq('cliente_id', clienteId);
+    if (articuloIds) query = query.in('articulo_id', articuloIds);
+    const porPagina = 1000;
+    let desdeFila = 0;
+    let todas = [];
+    while (true) {
+      const { data, error } = await query.order('id', { ascending: true }).range(desdeFila, desdeFila + porPagina - 1);
+      if (error) throw error;
+      todas = todas.concat(data);
+      if (data.length < porPagina) break;
+      desdeFila += porPagina;
+    }
+    return { cantidadFilas: todas.length, totalMonto: todas.reduce((s, v) => s + Number(v.monto || 0), 0) };
+  },
+  deleteVentasPorFiltro: async ({ desde, hasta, clienteId, articuloIds }) => {
+    let query = sb.from('ventas').delete().gte('fecha', desde).lte('fecha', hasta);
+    if (clienteId) query = query.eq('cliente_id', clienteId);
+    if (articuloIds) query = query.in('articulo_id', articuloIds);
+    const { error } = await query;
+    if (error) throw error;
+  },
   ensureArticuloPorNombre: async (nombre, grupo) => {
     const existente = cache.articulos.find(a => a.nombre.trim().toLowerCase() === nombre.trim().toLowerCase());
     if (existente) return existente;
