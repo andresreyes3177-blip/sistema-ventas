@@ -6627,8 +6627,20 @@ function renderDashboardCliente(clienteId) {
     </div>
   `).join('');
 
+  // Agrupadas por Rubro y ordenadas por monto total del grupo (de mayor a
+  // menor) — así arriba de todo aparece la categoría donde más gasta.
+  const gruposConsume = agruparPorRubro(datos.distribucionSubrubro, f => f.subrubro);
+  const rubrosConsumeOrdenados = Object.entries(gruposConsume).sort((a, b) =>
+    b[1].reduce((s, f) => s + f.monto, 0) - a[1].reduce((s, f) => s + f.monto, 0));
   document.getElementById('dashSubrubrosConsume').innerHTML = datos.distribucionSubrubro.length
-    ? datos.distribucionSubrubro.map(f => `<button type="button" class="checkbox-chip" data-drill-subrubro="${f.subrubro}">${f.subrubro} (${porcentajeSubrubro(f.monto)}%)</button>`).join('')
+    ? rubrosConsumeOrdenados.map(([rubro, items]) => `
+        <details class="dash-rubro-group" open>
+          <summary>${rubro} (${items.length})</summary>
+          <div class="checkbox-grid">
+            ${items.map(f => `<button type="button" class="checkbox-chip" data-drill-subrubro="${f.subrubro}">${f.subrubro} (${porcentajeSubrubro(f.monto)}%)</button>`).join('')}
+          </div>
+        </details>
+      `).join('')
     : '<span class="hint">Todavía no le compró nada.</span>';
   document.querySelectorAll('[data-drill-subrubro]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -6638,8 +6650,19 @@ function renderDashboardCliente(clienteId) {
     });
   });
 
+  // Acá no hay monto (nunca compró), así que los grupos van alfabéticamente
+  // por Rubro — y arrancan colapsados porque esta lista suele ser larga.
+  const gruposNoConsume = agruparPorRubro(datos.subrubrosNoConsume, s => s);
+  const rubrosNoConsumeOrdenados = Object.entries(gruposNoConsume).sort((a, b) => a[0].localeCompare(b[0]));
   document.getElementById('dashSubrubrosNoConsume').innerHTML = datos.subrubrosNoConsume.length
-    ? datos.subrubrosNoConsume.map(s => `<span class="checkbox-chip">${s}</span>`).join('')
+    ? rubrosNoConsumeOrdenados.map(([rubro, items]) => `
+        <details class="dash-rubro-group">
+          <summary>${rubro} (${items.length})</summary>
+          <div class="checkbox-grid">
+            ${items.map(s => `<span class="checkbox-chip">${s}</span>`).join('')}
+          </div>
+        </details>
+      `).join('')
     : '<span class="hint">Le compra a todos los Subrubros del catálogo.</span>';
 
   // Al volver a renderizar (ej. cambiar de cliente) se oculta el detalle del
