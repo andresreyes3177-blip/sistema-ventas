@@ -2141,10 +2141,14 @@ async function refreshVentasCache() {
     if (!cache.consumoPorClienteMes[fila.cliente_id]) cache.consumoPorClienteMes[fila.cliente_id] = {};
     cache.consumoPorClienteMes[fila.cliente_id][fila.mes] = { total: Number(fila.total || 0), cantidad: Number(fila.cantidad || 0) };
   });
-  // Si ya se había cargado el detalle en esta sesión, hay que volver a
-  // traerlo (cambió de sucursal o se refrescó Clientes) — se descarta el
-  // caché anterior para que la próxima pantalla que lo pida lo traiga de nuevo.
-  vtaVentasDetalladasPromise = null;
+  // OJO: acá NO se descarta el caché de detalle (cache.ventas) — ese detalle
+  // es el mismo para todo el sistema sin importar qué sucursal esté elegida
+  // arriba (el filtrado por sucursal se hace después, en cada pantalla, con
+  // cache.clientes). Invalidarlo acá hacía que cambiar de sucursal, o
+  // cualquier otro refresh de Clientes, disparara de nuevo la traída
+  // completa de TODO el historial de ventas — invalidarVentasDetalladas()
+  // se llama a propósito solo donde realmente cambian filas de ventas
+  // (importar, agregar venta manual, borrar un período).
 }
 
 // "Candado" para no traer el detalle fila por fila más de una vez a la vez
