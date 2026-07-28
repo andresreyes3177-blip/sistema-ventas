@@ -6960,6 +6960,45 @@ function puedeVerRentabilidad() {
   return !!(currentProfile && currentProfile.role === 'admin' && currentProfile.protegido === true);
 }
 
+// Trae costo por artículo y el historial de cotización del dólar — solo si
+// el usuario logueado puede verlo (si no, la tabla ni siquiera se lee, la
+// RLS del lado del servidor la deja vacía igual, pero así evitamos el
+// pedido de más). Se llama de nuevo cada vez que se guarda un costo o una
+// cotización nueva.
+async function refreshRentabilidadCache() {
+  if (!puedeVerRentabilidad()) { cache.costosPorArticulo = {}; cache.cotizacionesDolar = []; return; }
+  const [costos, cotizaciones] = await Promise.all([DB.listArticulosCostos(), DB.listCotizacionesDolar()]);
+  cache.costosPorArticulo = {};
+  costos.forEach(c => { cache.costosPorArticulo[c.articulo_id] = c; });
+  cache.cotizacionesDolar = cotizaciones;
+}
+
+// La cotización vigente en una fecha de venta: la última cargada con fecha
+// <= esa fecha — así una venta vieja no cambia de margen cuando se carga
+// una cotización nueva de hoy.
+function cotizacionVigente(fechaVenta) {
+  const fecha = (fechaVenta || '').toString().slice(0, 10);
+  let mejor = null;
+  cache.cotizacionesDolar.forEach(c => {
+    if (c.fecha <= fecha && (!mejor || c.fecha > mejor.fecha)) mejor = c;
+  });
+  return mejor ? Number(mejor.valor) : null;
+}
+
+// Costo unitario efectivo en pesos de un artículo, para una venta de una
+// fecha dada. null si no hay costo cargado, o si el costo está en USD pero
+// todavía no se cargó ninguna cotización con fecha <= la de esa venta.
+function costoUnitarioEfectivo(articuloId, fechaVenta) {
+  const c = cache.costosPorArticulo[articuloId];
+  if (!c) return null;
+  if (c.costo_usd !== null && c.costo_usd !== undefined) {
+    const cot = cotizacionVigente(fechaVenta);
+    return cot !== null ? Number(c.costo_usd) * cot : null;
+  }
+  if (c.costo_ars !== null && c.costo_ars !== undefined) return Number(c.costo_ars);
+  return null;
+}
+
 function aplicarFiltroPorRol() {
   const esVendedor = currentProfile && currentProfile.role === 'vendedor';
   document.querySelectorAll('[data-vendedor-oculto]').forEach(el => { el.style.display = esVendedor ? 'none' : ''; });
