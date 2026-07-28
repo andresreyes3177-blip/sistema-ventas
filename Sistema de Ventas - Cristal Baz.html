@@ -1650,6 +1650,19 @@
 
       <hr class="divider">
 
+      <div id="fichaRentabilidadWrap" data-solo-yo-oculto style="display:none;">
+        <h3>💰 Rentabilidad de este cliente</h3>
+        <p class="hint">Sobre todo el historial de compras cargado. Requiere costo cargado en los artículos que compró — ver <a href="#" id="fichaRentabilidadLinkInfo" style="pointer-events:none;">Rentabilidad</a>.</p>
+        <div class="grid-2" style="grid-template-columns:repeat(4,1fr);">
+          <div class="card"><h4>Facturado</h4><p id="fichaRentFacturado" style="font-size:1.2rem; font-weight:600;"></p></div>
+          <div class="card"><h4>Costo</h4><p id="fichaRentCosto" style="font-size:1.2rem; font-weight:600;"></p></div>
+          <div class="card" style="background:var(--green-bg);"><h4>Margen</h4><p id="fichaRentMargen" style="font-size:1.2rem; font-weight:600; color:var(--green);"></p></div>
+          <div class="card" style="background:var(--green-bg);"><h4>Margen %</h4><p id="fichaRentMargenPct" style="font-size:1.2rem; font-weight:600; color:var(--green);"></p></div>
+        </div>
+        <p class="hint" id="fichaRentSinCostoHint"></p>
+      </div>
+      <hr class="divider" data-solo-yo-oculto style="display:none;">
+
       <h3>🧾 Historial de compras</h3>
       <p class="hint" id="clienteModalVentasResumen"></p>
       <button type="button" class="btn-secondary" id="btnVtaManualToggle">+ Agregar venta manual</button>
