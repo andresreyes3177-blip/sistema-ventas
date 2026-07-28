@@ -6951,6 +6951,15 @@ document.getElementById('btnVentasBorrarConfirmar').addEventListener('click', as
 });
 
 // ---------------- Filtro de pestañas por rol (vendedor externo) ----------------
+// Por ahora, Rentabilidad (costo y margen) queda visible solo para el
+// Administrador protegido — ni siquiera para otros Administradores que se
+// creen más adelante. Espeja la misma condición que la función
+// puede_ver_rentabilidad() de la base de datos, así lo que se ve en
+// pantalla coincide con lo que realmente se puede traer.
+function puedeVerRentabilidad() {
+  return !!(currentProfile && currentProfile.role === 'admin' && currentProfile.protegido === true);
+}
+
 function aplicarFiltroPorRol() {
   const esVendedor = currentProfile && currentProfile.role === 'vendedor';
   document.querySelectorAll('[data-vendedor-oculto]').forEach(el => { el.style.display = esVendedor ? 'none' : ''; });
@@ -6961,6 +6970,10 @@ function aplicarFiltroPorRol() {
     document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
     document.getElementById('tab-centrocontactos').style.display = 'block';
   }
+
+  const soloYo = puedeVerRentabilidad();
+  document.querySelectorAll('[data-solo-yo-oculto]').forEach(el => { el.style.display = soloYo ? '' : 'none'; });
+  document.querySelectorAll('.th-costo').forEach(el => { el.style.display = soloYo ? '' : 'none'; });
 }
 
 // ---------------- Init ----------------
