@@ -2875,7 +2875,30 @@ async function openClienteModal(clienteId) {
   ventasClienteFichaActual = await DB.listVentasCliente(clienteId);
   await mostrarSugerenciasCrosssellEnFicha(clienteId);
   renderHistorialVentasCliente(clienteId);
+  renderFichaRentabilidad();
   document.getElementById('clienteModalOverlay').style.display = 'flex';
+}
+
+// Margen de este cliente sobre todo su historial (ventasClienteFichaActual,
+// ya acotado a él) — solo se calcula y se muestra si puedeVerRentabilidad().
+function renderFichaRentabilidad() {
+  if (!puedeVerRentabilidad()) return;
+  let facturado = 0, costo = 0, sinCosto = 0;
+  ventasClienteFichaActual.filter(v => v.articulo_id).forEach(v => {
+    facturado += Number(v.monto || 0);
+    const costoUnit = costoUnitarioEfectivo(v.articulo_id, v.fecha);
+    if (costoUnit === null) sinCosto++;
+    else costo += costoUnit * Number(v.cantidad || 0);
+  });
+  const margen = facturado - costo;
+  const margenPct = facturado > 0 ? (margen / facturado) * 100 : 0;
+  document.getElementById('fichaRentFacturado').textContent = FORMATO_PESOS(facturado);
+  document.getElementById('fichaRentCosto').textContent = FORMATO_PESOS(costo);
+  document.getElementById('fichaRentMargen').textContent = FORMATO_PESOS(margen);
+  document.getElementById('fichaRentMargenPct').textContent = Math.round(margenPct) + '%';
+  document.getElementById('fichaRentSinCostoHint').textContent = sinCosto
+    ? `⚠️ ${sinCosto} venta(s) de este cliente no tienen costo cargado (o falta la cotización del dólar de esa fecha) — el costo queda incompleto.`
+    : '';
 }
 
 // Historial de compras del cliente, en su ficha: agrupado por mes (con el
