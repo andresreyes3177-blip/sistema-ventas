@@ -78,6 +78,14 @@
   .checkbox-chip input { width: auto; }
   .checkbox-grid-scroll { max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
 
+  .dash-rubro-group { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; padding: 8px 12px; }
+  .dash-rubro-group summary { cursor: pointer; font-weight: 600; color: var(--navy); padding: 4px 0; list-style: none; }
+  .dash-rubro-group summary::-webkit-details-marker { display: none; }
+  .dash-rubro-group summary::before { content: "▸ "; }
+  .dash-rubro-group[open] summary::before { content: "▾ "; }
+  .dash-rubro-group summary:hover { color: var(--coral-dark); }
+  .dash-rubro-group .checkbox-grid { margin-top: 8px; }
+
   .empty-state { background: var(--orange-bg); border: 1px solid #e9c98a; border-radius: 10px; padding: 14px 16px; font-size: 0.88rem; margin-bottom: 12px; color: var(--orange); }
   .soon-card { text-align: center; padding: 46px 20px; color: var(--gray); }
   .soon-card .soon-icon { font-size: 2rem; margin-bottom: 10px; }
