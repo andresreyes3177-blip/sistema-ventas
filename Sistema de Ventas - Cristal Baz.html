@@ -843,6 +843,27 @@
         </div>
       </div>
     </div>
+
+    <div class="card" style="border-color:var(--red); margin-top:20px;">
+      <h2 style="color:var(--red);">⚠️ Borrar ventas de un período</h2>
+      <p class="hint">Para corregir una importación sin duplicar nada: buscá las ventas de un rango de fechas (y, si hace falta, acotá por Cliente y/o Grupo/Rubro), revisá cuántas son y por cuánta plata antes de borrarlas, y recién ahí volvé a importar el archivo correcto. Solo para Administradores. <strong>No se puede deshacer.</strong></p>
+      <div class="field-row">
+        <div class="field"><label>Fecha desde *</label><input type="date" id="ventasBorrarDesde"></div>
+        <div class="field"><label>Fecha hasta *</label><input type="date" id="ventasBorrarHasta"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Cliente (opcional)</label><select id="ventasBorrarCliente"><option value="">Todos</option></select></div>
+        <div class="field"><label>Grupo (opcional)</label><select id="ventasBorrarGrupo"><option value="">Todos</option></select></div>
+        <div class="field"><label>Rubro (opcional)</label><select id="ventasBorrarRubro"><option value="">Todos</option></select></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn-secondary" id="btnVentasBorrarBuscar">Buscar</button>
+      </div>
+      <p class="hint" id="ventasBorrarResumen"></p>
+      <div class="actions" id="ventasBorrarConfirmarWrap" style="display:none;">
+        <button type="button" class="btn-secondary" id="btnVentasBorrarConfirmar" style="border-color:var(--red); color:var(--red);">🗑️ Borrar estas ventas</button>
+      </div>
+    </div>
   </section>
 
   <!-- ===================== CROSS-SELL ===================== -->
