@@ -3379,16 +3379,25 @@ function renderArticulosFiltrados() {
 
   document.getElementById('articulosCount').textContent = cache.articulos.length;
   document.getElementById('articulosFiltradosHint').textContent = (grupoFiltro || rubroFiltro || subrubroFiltro) ? ` (${lista.length} coinciden con el filtro)` : '';
-  document.getElementById('articulosTbody').innerHTML = lista.slice(0, 200).map(a => `
+  const verCostos = puedeVerRentabilidad();
+  document.getElementById('articulosTbody').innerHTML = lista.slice(0, 200).map(a => {
+    const costo = cache.costosPorArticulo[a.id] || {};
+    const celdasCosto = verCostos ? `
+      <td class="th-costo"><input type="number" step="0.01" data-ed-articulo-costo-usd="${a.id}" value="${costo.costo_usd ?? ''}" placeholder="—"></td>
+      <td class="th-costo"><input type="number" step="0.01" data-ed-articulo-costo-ars="${a.id}" value="${costo.costo_ars ?? ''}" placeholder="—"></td>
+    ` : '';
+    return `
     <tr>
       <td><input data-ed-articulo-codigo="${a.id}" value="${a.codigo_erp}"></td>
       <td><input data-ed-articulo-nombre="${a.id}" value="${a.nombre}"></td>
       <td><input data-ed-articulo-grupo="${a.id}" value="${a.grupo}"></td>
       <td><input data-ed-articulo-rubro="${a.id}" value="${a.rubro}"></td>
       <td><input data-ed-articulo-subrubro="${a.id}" value="${a.subrubro || ''}"></td>
+      ${celdasCosto}
       <td><button class="btn-link" data-guardar-articulo="${a.id}">Guardar</button></td>
     </tr>
-  `).join('') || '<tr><td colspan="6" class="hint">Ningún artículo coincide con los filtros.</td></tr>';
+  `;
+  }).join('') || `<tr><td colspan="${verCostos ? 8 : 6}" class="hint">Ningún artículo coincide con los filtros.</td></tr>`;
 
   document.querySelectorAll('[data-guardar-articulo]').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -3401,6 +3410,16 @@ function renderArticulosFiltrados() {
       if (!codigo_erp || !nombre || !grupo || !rubro) { alert('Código, Artículo, Grupo y Rubro no pueden quedar vacíos.'); return; }
       try {
         await DB.updateArticulo(id, { codigo_erp, nombre, grupo, rubro, subrubro: subrubro || null });
+        if (puedeVerRentabilidad()) {
+          const inputUsd = document.querySelector(`[data-ed-articulo-costo-usd="${id}"]`);
+          const inputArs = document.querySelector(`[data-ed-articulo-costo-ars="${id}"]`);
+          if (inputUsd && inputArs) {
+            const costo_usd = inputUsd.value === '' ? null : Number(inputUsd.value);
+            const costo_ars = inputArs.value === '' ? null : Number(inputArs.value);
+            await DB.upsertCostoArticulo(id, { costo_usd, costo_ars });
+            await refreshRentabilidadCache();
+          }
+        }
         await refreshArticulos();
         await refreshCrosssell();
       } catch (e) { reportError(e); }
