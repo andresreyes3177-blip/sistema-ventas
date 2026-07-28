@@ -1689,7 +1689,23 @@ const DB_RAW = {
     else { const { error } = await sb.from('cliente_tags').delete().eq('cliente_id', clienteId).eq('tag_id', tagId); if (error) throw error; }
   },
   listContactos: async (clienteId) => { const { data, error } = await sb.from('contactos').select('*').eq('cliente_id', clienteId).order('nombre'); if (error) throw error; return data; },
-  listTodosContactos: async () => { const { data, error } = await sb.from('contactos').select('*'); if (error) throw error; return data; },
+  // Paginado igual que listTodasInteracciones — sin esto, pasadas las ~1000
+  // personas de contacto cargadas en todo el sistema, se cortaban en
+  // silencio y la columna "Persona" del Historial empezaba a quedar vacía
+  // para los contactos más nuevos, sin ningún aviso de error.
+  listTodosContactos: async () => {
+    const porPagina = 1000;
+    let desde = 0;
+    let todas = [];
+    while (true) {
+      const { data, error } = await sb.from('contactos').select('*').order('id', { ascending: true }).range(desde, desde + porPagina - 1);
+      if (error) throw error;
+      todas = todas.concat(data);
+      if (data.length < porPagina) break;
+      desde += porPagina;
+    }
+    return todas;
+  },
   createContacto: async (payload) => { const { error } = await sb.from('contactos').insert(payload); if (error) throw error; },
   // Paginado igual que listVentasResumen/listUltimosContactos — Supabase no
   // devuelve más de ~1000 filas por consulta si no se pagina, y con más de
