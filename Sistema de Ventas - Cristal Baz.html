@@ -6560,6 +6560,23 @@ function mostrarDetalleSubrubroCliente(clienteId, subrubro) {
   document.getElementById('dashDetalleSubrubroWrap').style.display = 'block';
 }
 
+// Agrupa una lista de Subrubros por Rubro (usando el Catálogo para saber a
+// qué Rubro pertenece cada Subrubro) — así las listas de "Subrubros que
+// consume/no consume" del Dashboard de cliente se pueden navegar por
+// categoría en vez de una lista larga y desordenada. `getSubrubro` saca el
+// nombre del Subrubro de cada item (los items pueden ser strings u objetos).
+function agruparPorRubro(items, getSubrubro) {
+  const rubroDeSubrubro = {};
+  cache.articulos.forEach(a => { if (a.subrubro && !(a.subrubro in rubroDeSubrubro)) rubroDeSubrubro[a.subrubro] = a.rubro || 'Sin rubro'; });
+  const grupos = {};
+  items.forEach(item => {
+    const rubro = rubroDeSubrubro[getSubrubro(item)] || 'Sin rubro';
+    if (!grupos[rubro]) grupos[rubro] = [];
+    grupos[rubro].push(item);
+  });
+  return grupos;
+}
+
 function renderDashboardCliente(clienteId) {
   const datos = calcularDatosDashboardCliente(clienteId);
 
