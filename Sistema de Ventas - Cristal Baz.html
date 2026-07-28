@@ -6700,6 +6700,80 @@ document.querySelector('[data-tab="ventasimport"]').addEventListener('click', ()
   document.getElementById('ventasClienteDestino').innerHTML = '<option value="">Todos (según la columna Cliente del archivo)</option>' +
     clientesOrdenados.map(c => `<option value="${c.id}">${c.razon_social}${c.localidad ? ' — ' + c.localidad : ''}</option>`).join('');
   if (clientesOrdenados.some(c => c.id === actual)) document.getElementById('ventasClienteDestino').value = actual;
+
+  document.getElementById('ventasBorrarCliente').innerHTML = '<option value="">Todos</option>' +
+    clientesOrdenados.map(c => `<option value="${c.id}">${c.razon_social}${c.localidad ? ' — ' + c.localidad : ''}</option>`).join('');
+
+  const gruposOrdenados = [...new Set(cache.articulos.map(a => a.grupo).filter(Boolean))].sort();
+  document.getElementById('ventasBorrarGrupo').innerHTML = '<option value="">Todos</option>' +
+    gruposOrdenados.map(g => `<option value="${g}">${g}</option>`).join('');
+  refreshVentasBorrarRubro();
+
+  document.getElementById('ventasBorrarConfirmarWrap').style.display = 'none';
+  document.getElementById('ventasBorrarResumen').textContent = '';
+});
+
+// "Borrar ventas de un período": Rubro cascadea del Grupo elegido (mismo
+// mecanismo que el resto de los filtros Grupo→Rubro→Subrubro del sistema).
+function refreshVentasBorrarRubro() {
+  const grupo = document.getElementById('ventasBorrarGrupo').value;
+  const actual = document.getElementById('ventasBorrarRubro').value;
+  const rubros = [...new Set(cache.articulos.filter(a => !grupo || a.grupo === grupo).map(a => a.rubro).filter(Boolean))].sort();
+  document.getElementById('ventasBorrarRubro').innerHTML = '<option value="">Todos</option>' + rubros.map(r => `<option value="${r}">${r}</option>`).join('');
+  if (rubros.includes(actual)) document.getElementById('ventasBorrarRubro').value = actual;
+}
+document.getElementById('ventasBorrarGrupo').addEventListener('change', refreshVentasBorrarRubro);
+
+// Devuelve los articulo_id que coinciden con el Grupo/Rubro elegidos, o null
+// si están los dos en "Todos" (para no filtrar por artículo en ese caso).
+function articuloIdsParaBorrarVentas() {
+  const grupo = document.getElementById('ventasBorrarGrupo').value;
+  const rubro = document.getElementById('ventasBorrarRubro').value;
+  if (!grupo && !rubro) return null;
+  return cache.articulos
+    .filter(a => (!grupo || a.grupo === grupo) && (!rubro || a.rubro === rubro))
+    .map(a => a.id);
+}
+
+document.getElementById('btnVentasBorrarBuscar').addEventListener('click', async () => {
+  const desde = document.getElementById('ventasBorrarDesde').value;
+  const hasta = document.getElementById('ventasBorrarHasta').value;
+  if (!desde || !hasta) { alert('Completá Fecha desde y Fecha hasta — son obligatorias para esta búsqueda.'); return; }
+  const clienteId = document.getElementById('ventasBorrarCliente').value || null;
+  const articuloIds = articuloIdsParaBorrarVentas();
+  document.getElementById('ventasBorrarConfirmarWrap').style.display = 'none';
+  try {
+    const { cantidadFilas, totalMonto } = await DB.buscarVentasPorFiltro({ desde, hasta, clienteId, articuloIds });
+    if (!cantidadFilas) {
+      document.getElementById('ventasBorrarResumen').textContent = 'No hay ventas que coincidan con este filtro.';
+      return;
+    }
+    document.getElementById('ventasBorrarResumen').textContent =
+      `Encontradas ${cantidadFilas} venta(s) — total $${Math.round(totalMonto).toLocaleString('es-AR')}. Revisá que sea lo que querés borrar antes de confirmar.`;
+    document.getElementById('ventasBorrarConfirmarWrap').style.display = 'flex';
+    document.getElementById('ventasBorrarConfirmarWrap').dataset.desde = desde;
+    document.getElementById('ventasBorrarConfirmarWrap').dataset.hasta = hasta;
+    document.getElementById('ventasBorrarConfirmarWrap').dataset.clienteId = clienteId || '';
+    document.getElementById('ventasBorrarConfirmarWrap').dataset.cantidadFilas = cantidadFilas;
+    document.getElementById('ventasBorrarConfirmarWrap').dataset.totalMonto = totalMonto;
+  } catch (e) { reportError(e); }
+});
+
+document.getElementById('btnVentasBorrarConfirmar').addEventListener('click', async () => {
+  if (!currentProfile || currentProfile.role !== 'admin') { alert('Solo un Administrador puede borrar ventas.'); return; }
+  const wrap = document.getElementById('ventasBorrarConfirmarWrap');
+  const { desde, hasta, clienteId, cantidadFilas, totalMonto } = wrap.dataset;
+  if (!confirm(`¿Seguro que querés borrar ${cantidadFilas} venta(s) por un total de $${Math.round(totalMonto).toLocaleString('es-AR')}? Esto no se puede deshacer.`)) return;
+  const escrito = prompt('Para confirmar, escribí BORRAR VENTAS (en mayúsculas) y aceptá:');
+  if (escrito !== 'BORRAR VENTAS') { alert('No coincide, no se borró nada.'); return; }
+  try {
+    const articuloIds = articuloIdsParaBorrarVentas();
+    await DB.deleteVentasPorFiltro({ desde, hasta, clienteId: clienteId || null, articuloIds });
+    await refreshVentasCache();
+    document.getElementById('ventasBorrarResumen').textContent = `Listo, se borraron ${cantidadFilas} venta(s).`;
+    wrap.style.display = 'none';
+    alert('Ventas borradas correctamente. Ya podés volver a importar el archivo correcto.');
+  } catch (e) { reportError(e); }
 });
 
 // ---------------- Filtro de pestañas por rol (vendedor externo) ----------------
