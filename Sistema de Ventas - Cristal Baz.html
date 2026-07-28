@@ -3583,6 +3583,7 @@ document.getElementById('btnConfirmarImportacionVentas').addEventListener('click
     document.getElementById('fileVentas').value = '';
     await refreshArticulos();
     await refreshVentasCache();
+    invalidarVentasDetalladas();
     renderClientes();
     refreshVentasTab();
     const periodos = [...new Set(validas.map(v => v.fecha.slice(0, 7)))].sort();
