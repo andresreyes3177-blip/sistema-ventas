@@ -1431,6 +1431,84 @@
       </div>
     </div>
   </section>
+  <section id="tab-rentabilidad" class="tab-panel" style="display:none;">
+    <div class="card">
+      <h2>💵 Cotización del dólar</h2>
+      <p class="hint">Se usa para convertir a pesos el costo de los artículos cargados en USD. Cada venta calcula su costo con la cotización vigente en <strong>su</strong> fecha (la última cargada con fecha anterior o igual), así el margen de un mes no cambia después si cargás una cotización nueva.</p>
+      <div class="field-row">
+        <div class="field"><label>Fecha</label><input type="date" id="rentDolarFecha"></div>
+        <div class="field"><label>Valor ($ por USD)</label><input type="number" step="0.01" id="rentDolarValor"></div>
+        <div class="field" style="align-self:flex-end;"><button type="button" class="btn-secondary" id="btnRentDolarGuardar">Guardar cotización</button></div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Fecha</th><th>Valor</th><th></th></tr></thead>
+          <tbody id="rentDolarTbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="toolbar mode-tabs" id="rentSubtabsBar">
+      <button class="btn-tab is-active" data-subtab-rent="articulo">📦 Por Artículo</button>
+      <button class="btn-tab" data-subtab-rent="cliente">👤 Por Cliente</button>
+    </div>
+
+    <div class="card rent-subpanel" id="rentArticuloCard">
+      <h2>Rentabilidad por Artículo</h2>
+      <div class="field-row">
+        <div class="field"><label>Grupo</label><select id="rentGrupo"><option value="">Todos</option></select></div>
+        <div class="field"><label>Rubro</label><select id="rentRubro"><option value="">Todos</option></select></div>
+        <div class="field"><label>Subrubro</label><select id="rentSubrubro"><option value="">Todos</option></select></div>
+        <div class="field"><label>Artículo</label><select id="rentArticulo"><option value="">Todos</option></select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Desde</label><input type="date" id="rentArticuloDesde"></div>
+        <div class="field"><label>Hasta</label><input type="date" id="rentArticuloHasta"></div>
+        <div class="field" style="align-self:flex-end;"><button type="button" class="btn-primary" id="btnRentArticuloCalcular">Calcular</button></div>
+      </div>
+      <div id="rentArticuloResultado" style="display:none;">
+        <div class="grid-2" style="grid-template-columns:repeat(4,1fr);">
+          <div class="card"><h4>Facturado</h4><p id="rentArticuloFacturado" style="font-size:1.3rem; font-weight:600;"></p></div>
+          <div class="card"><h4>Costo</h4><p id="rentArticuloCosto" style="font-size:1.3rem; font-weight:600;"></p></div>
+          <div class="card" style="background:var(--green-bg);"><h4>Margen</h4><p id="rentArticuloMargen" style="font-size:1.3rem; font-weight:600; color:var(--green);"></p></div>
+          <div class="card" style="background:var(--green-bg);"><h4>Margen promedio</h4><p id="rentArticuloMargenPct" style="font-size:1.3rem; font-weight:600; color:var(--green);"></p></div>
+        </div>
+        <p class="hint" id="rentArticuloSinCostoHint"></p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Artículo</th><th>Cantidad</th><th>Facturado</th><th>Costo</th><th>Margen $</th><th>Margen %</th></tr></thead>
+            <tbody id="rentArticuloTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card rent-subpanel" id="rentClienteCard" style="display:none;">
+      <h2>Rentabilidad por Cliente</h2>
+      <p class="hint">Cada cliente puede tener condiciones comerciales distintas — esto te muestra cuánto margen deja cada uno, sobre lo realmente facturado.</p>
+      <div class="field-row">
+        <div class="field"><label>Buscar cliente</label><input type="text" id="rentClienteBuscar" placeholder="Escribí para filtrar..."></div>
+        <div class="field"><label>Desde</label><input type="date" id="rentClienteDesde"></div>
+        <div class="field"><label>Hasta</label><input type="date" id="rentClienteHasta"></div>
+        <div class="field" style="align-self:flex-end;"><button type="button" class="btn-primary" id="btnRentClienteCalcular">Calcular</button></div>
+      </div>
+      <div id="rentClienteResultado" style="display:none;">
+        <div class="grid-2" style="grid-template-columns:repeat(4,1fr);">
+          <div class="card"><h4>Facturado</h4><p id="rentClienteFacturado" style="font-size:1.3rem; font-weight:600;"></p></div>
+          <div class="card"><h4>Costo</h4><p id="rentClienteCosto" style="font-size:1.3rem; font-weight:600;"></p></div>
+          <div class="card" style="background:var(--green-bg);"><h4>Margen</h4><p id="rentClienteMargen" style="font-size:1.3rem; font-weight:600; color:var(--green);"></p></div>
+          <div class="card" style="background:var(--green-bg);"><h4>Margen promedio</h4><p id="rentClienteMargenPct" style="font-size:1.3rem; font-weight:600; color:var(--green);"></p></div>
+        </div>
+        <p class="hint" id="rentClienteSinCostoHint"></p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Cliente</th><th>Localidad</th><th>Facturado</th><th>Costo</th><th>Margen $</th><th>Margen %</th></tr></thead>
+            <tbody id="rentClienteTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
   <section id="tab-alertas" class="tab-panel" style="display:none;">
     <div class="card">
       <h2>Configuración de alertas por tiempo sin contacto</h2>
