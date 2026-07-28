@@ -3612,6 +3612,247 @@ document.getElementById('btnConfirmarImportarCostos').addEventListener('click', 
   finally { btn.disabled = false; }
 });
 
+// ---------------- Rentabilidad ----------------
+function renderRentDolarTabla() {
+  const filas = [...cache.cotizacionesDolar].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  document.getElementById('rentDolarTbody').innerHTML = filas.map(c => `
+    <tr>
+      <td>${new Date(c.fecha + 'T00:00:00').toLocaleDateString('es-AR')}</td>
+      <td>$${Number(c.valor).toLocaleString('es-AR')}</td>
+      <td><button class="btn-link" data-borrar-cotizacion="${c.id}">Borrar</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="3" class="hint">Todavía no cargaste ninguna cotización.</td></tr>';
+  document.querySelectorAll('[data-borrar-cotizacion]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('¿Borrar esta cotización?')) return;
+      try {
+        await DB.deleteCotizacionDolar(btn.dataset.borrarCotizacion);
+        await refreshRentabilidadCache();
+        renderRentDolarTabla();
+      } catch (e) { reportError(e); }
+    });
+  });
+}
+
+document.getElementById('btnRentDolarGuardar').addEventListener('click', async () => {
+  const fecha = document.getElementById('rentDolarFecha').value;
+  const valor = Number(document.getElementById('rentDolarValor').value);
+  if (!fecha) { alert('Elegí una fecha.'); return; }
+  if (!valor || valor <= 0) { alert('Completá un valor válido.'); return; }
+  try {
+    await DB.upsertCotizacionDolar({ fecha, valor });
+    await refreshRentabilidadCache();
+    renderRentDolarTabla();
+    document.getElementById('rentDolarValor').value = '';
+  } catch (e) { reportError(e); }
+});
+
+// Sub-pestañas Por Artículo / Por Cliente — mismo mecanismo que Análisis de Ventas.
+let rentSubtabActiva = 'articulo';
+function mostrarRentSubtabActiva() {
+  document.getElementById('rentArticuloCard').style.display = rentSubtabActiva === 'articulo' ? 'block' : 'none';
+  document.getElementById('rentClienteCard').style.display = rentSubtabActiva === 'cliente' ? 'block' : 'none';
+}
+document.querySelectorAll('[data-subtab-rent]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-subtab-rent]').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    rentSubtabActiva = btn.dataset.subtabRent;
+    mostrarRentSubtabActiva();
+  });
+});
+
+// Filtros en cascada Grupo→Rubro→Subrubro→Artículo, igual que en Análisis de Artículos Vendidos.
+function refreshRentFiltroGrupo() {
+  const actual = document.getElementById('rentGrupo').value;
+  const grupos = [...new Set(cache.articulos.map(a => a.grupo).filter(Boolean))].sort();
+  document.getElementById('rentGrupo').innerHTML = '<option value="">Todos</option>' + grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+  if (grupos.includes(actual)) document.getElementById('rentGrupo').value = actual;
+  refreshRentFiltroRubro();
+}
+function refreshRentFiltroRubro() {
+  const grupo = document.getElementById('rentGrupo').value;
+  const actual = document.getElementById('rentRubro').value;
+  const articulosDeGrupo = grupo ? cache.articulos.filter(a => a.grupo === grupo) : cache.articulos;
+  const rubros = [...new Set(articulosDeGrupo.map(a => a.rubro).filter(Boolean))].sort();
+  document.getElementById('rentRubro').innerHTML = '<option value="">Todos</option>' + rubros.map(r => `<option value="${r}">${r}</option>`).join('');
+  if (rubros.includes(actual)) document.getElementById('rentRubro').value = actual;
+  refreshRentFiltroSubrubro();
+}
+function refreshRentFiltroSubrubro() {
+  const grupo = document.getElementById('rentGrupo').value;
+  const rubro = document.getElementById('rentRubro').value;
+  const actual = document.getElementById('rentSubrubro').value;
+  let filtrados = cache.articulos;
+  if (grupo) filtrados = filtrados.filter(a => a.grupo === grupo);
+  if (rubro) filtrados = filtrados.filter(a => a.rubro === rubro);
+  const subrubros = [...new Set(filtrados.map(a => a.subrubro).filter(Boolean))].sort();
+  document.getElementById('rentSubrubro').innerHTML = '<option value="">Todos</option>' + subrubros.map(s => `<option value="${s}">${s}</option>`).join('');
+  if (subrubros.includes(actual)) document.getElementById('rentSubrubro').value = actual;
+  refreshRentFiltroArticulo();
+}
+function refreshRentFiltroArticulo() {
+  const grupo = document.getElementById('rentGrupo').value;
+  const rubro = document.getElementById('rentRubro').value;
+  const subrubro = document.getElementById('rentSubrubro').value;
+  const actual = document.getElementById('rentArticulo').value;
+  let filtrados = cache.articulos;
+  if (grupo) filtrados = filtrados.filter(a => a.grupo === grupo);
+  if (rubro) filtrados = filtrados.filter(a => a.rubro === rubro);
+  if (subrubro) filtrados = filtrados.filter(a => a.subrubro === subrubro);
+  filtrados = [...filtrados].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  document.getElementById('rentArticulo').innerHTML = '<option value="">Todos</option>' + filtrados.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
+  if (filtrados.some(a => a.id === actual)) document.getElementById('rentArticulo').value = actual;
+}
+document.getElementById('rentGrupo').addEventListener('change', () => { document.getElementById('rentRubro').value = ''; document.getElementById('rentSubrubro').value = ''; document.getElementById('rentArticulo').value = ''; refreshRentFiltroRubro(); });
+document.getElementById('rentRubro').addEventListener('change', () => { document.getElementById('rentSubrubro').value = ''; document.getElementById('rentArticulo').value = ''; refreshRentFiltroSubrubro(); });
+document.getElementById('rentSubrubro').addEventListener('change', () => { document.getElementById('rentArticulo').value = ''; refreshRentFiltroArticulo(); });
+
+async function refreshRentabilidadTab() {
+  renderRentDolarTabla();
+  refreshRentFiltroGrupo();
+}
+document.querySelector('[data-tab="rentabilidad"]').addEventListener('click', refreshRentabilidadTab);
+
+document.getElementById('btnRentArticuloCalcular').addEventListener('click', async () => {
+  const btn = document.getElementById('btnRentArticuloCalcular');
+  btn.disabled = true;
+  btn.textContent = 'Calculando...';
+  try {
+    await asegurarVentasDetalladas();
+    const grupo = document.getElementById('rentGrupo').value;
+    const rubro = document.getElementById('rentRubro').value;
+    const subrubro = document.getElementById('rentSubrubro').value;
+    const articuloId = document.getElementById('rentArticulo').value;
+    const desde = document.getElementById('rentArticuloDesde').value;
+    const hasta = document.getElementById('rentArticuloHasta').value;
+    const idsPermitidos = new Set(cache.clientes.map(c => c.id));
+    const articulosPorId = {};
+    cache.articulos.forEach(a => { articulosPorId[a.id] = a; });
+
+    const ventasFiltradas = cache.ventas.filter(v => {
+      if (!v.articulo_id || !idsPermitidos.has(v.cliente_id)) return false;
+      if (desde && v.fecha < desde) return false;
+      if (hasta && v.fecha > hasta) return false;
+      const a = articulosPorId[v.articulo_id];
+      if (!a) return false;
+      if (articuloId) return a.id === articuloId;
+      if (subrubro && a.subrubro !== subrubro) return false;
+      if (rubro && a.rubro !== rubro) return false;
+      if (grupo && a.grupo !== grupo) return false;
+      return true;
+    });
+
+    const porArticulo = {};
+    let sinCosto = new Set();
+    ventasFiltradas.forEach(v => {
+      const a = articulosPorId[v.articulo_id];
+      if (!porArticulo[a.id]) porArticulo[a.id] = { articulo: a, cantidad: 0, facturado: 0, costo: 0, tieneCosto: true };
+      const fila = porArticulo[a.id];
+      fila.cantidad += Number(v.cantidad || 0);
+      fila.facturado += Number(v.monto || 0);
+      const costoUnit = costoUnitarioEfectivo(a.id, v.fecha);
+      if (costoUnit === null) { fila.tieneCosto = false; sinCosto.add(a.nombre); }
+      else fila.costo += costoUnit * Number(v.cantidad || 0);
+    });
+
+    const filas = Object.values(porArticulo).sort((a, b) => (b.facturado - b.costo) - (a.facturado - a.costo));
+    const totalFacturado = filas.reduce((s, f) => s + f.facturado, 0);
+    const totalCosto = filas.filter(f => f.tieneCosto).reduce((s, f) => s + f.costo, 0);
+    const facturadoConCosto = filas.filter(f => f.tieneCosto).reduce((s, f) => s + f.facturado, 0);
+    const margen = facturadoConCosto - totalCosto;
+    const margenPct = facturadoConCosto > 0 ? (margen / facturadoConCosto) * 100 : 0;
+
+    document.getElementById('rentArticuloFacturado').textContent = FORMATO_PESOS(totalFacturado);
+    document.getElementById('rentArticuloCosto').textContent = FORMATO_PESOS(totalCosto);
+    document.getElementById('rentArticuloMargen').textContent = FORMATO_PESOS(margen);
+    document.getElementById('rentArticuloMargenPct').textContent = Math.round(margenPct) + '%';
+    document.getElementById('rentArticuloSinCostoHint').textContent = sinCosto.size
+      ? `⚠️ ${sinCosto.size} artículo(s) vendidos en esta selección no tienen costo cargado (o falta la cotización del dólar de esa fecha) — no entran en el cálculo de costo/margen: ${[...sinCosto].slice(0, 8).join(', ')}${sinCosto.size > 8 ? '...' : ''}`
+      : '';
+    document.getElementById('rentArticuloTbody').innerHTML = filas.map(f => {
+      const m = f.tieneCosto ? f.facturado - f.costo : null;
+      const pct = f.tieneCosto && f.facturado > 0 ? (m / f.facturado) * 100 : null;
+      return `<tr>
+        <td>${f.articulo.nombre}</td>
+        <td>${f.cantidad.toLocaleString('es-AR')}</td>
+        <td>${FORMATO_PESOS(f.facturado)}</td>
+        <td>${f.tieneCosto ? FORMATO_PESOS(f.costo) : '<span class="hint">sin costo</span>'}</td>
+        <td>${m !== null ? FORMATO_PESOS(m) : '—'}</td>
+        <td>${pct !== null ? Math.round(pct) + '%' : '—'}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
+    document.getElementById('rentArticuloResultado').style.display = 'block';
+  } catch (e) { reportError(e); }
+  finally { btn.disabled = false; btn.textContent = 'Calcular'; }
+});
+
+document.getElementById('btnRentClienteCalcular').addEventListener('click', async () => {
+  const btn = document.getElementById('btnRentClienteCalcular');
+  btn.disabled = true;
+  btn.textContent = 'Calculando...';
+  try {
+    await asegurarVentasDetalladas();
+    const desde = document.getElementById('rentClienteDesde').value;
+    const hasta = document.getElementById('rentClienteHasta').value;
+    const buscar = (document.getElementById('rentClienteBuscar').value || '').trim().toLowerCase();
+    const clientesPorId = {};
+    cache.clientes.forEach(c => { clientesPorId[c.id] = c; });
+    const idsPermitidos = new Set(cache.clientes.map(c => c.id));
+    const articulosPorId = {};
+    cache.articulos.forEach(a => { articulosPorId[a.id] = a; });
+
+    const ventasFiltradas = cache.ventas.filter(v => {
+      if (!v.articulo_id || !idsPermitidos.has(v.cliente_id)) return false;
+      if (desde && v.fecha < desde) return false;
+      if (hasta && v.fecha > hasta) return false;
+      return true;
+    });
+
+    const porCliente = {};
+    let sinCosto = 0;
+    ventasFiltradas.forEach(v => {
+      const cliente = clientesPorId[v.cliente_id];
+      if (!cliente) return;
+      if (buscar && !cliente.razon_social.toLowerCase().includes(buscar)) return;
+      if (!porCliente[cliente.id]) porCliente[cliente.id] = { cliente, facturado: 0, costo: 0, costoIncompleto: false };
+      const fila = porCliente[cliente.id];
+      fila.facturado += Number(v.monto || 0);
+      const costoUnit = costoUnitarioEfectivo(v.articulo_id, v.fecha);
+      if (costoUnit === null) { fila.costoIncompleto = true; sinCosto++; }
+      else fila.costo += costoUnit * Number(v.cantidad || 0);
+    });
+
+    const filas = Object.values(porCliente).sort((a, b) => (b.facturado - b.costo) - (a.facturado - a.costo));
+    const totalFacturado = filas.reduce((s, f) => s + f.facturado, 0);
+    const totalCosto = filas.reduce((s, f) => s + f.costo, 0);
+    const margen = totalFacturado - totalCosto;
+    const margenPct = totalFacturado > 0 ? (margen / totalFacturado) * 100 : 0;
+
+    document.getElementById('rentClienteFacturado').textContent = FORMATO_PESOS(totalFacturado);
+    document.getElementById('rentClienteCosto').textContent = FORMATO_PESOS(totalCosto);
+    document.getElementById('rentClienteMargen').textContent = FORMATO_PESOS(margen);
+    document.getElementById('rentClienteMargenPct').textContent = Math.round(margenPct) + '%';
+    document.getElementById('rentClienteSinCostoHint').textContent = sinCosto
+      ? `⚠️ Hay ${sinCosto} venta(s) en esta selección sin costo cargado (o sin cotización del dólar de esa fecha) — el costo de esos clientes queda incompleto.`
+      : '';
+    document.getElementById('rentClienteTbody').innerHTML = filas.map(f => {
+      const m = f.facturado - f.costo;
+      const pct = f.facturado > 0 ? (m / f.facturado) * 100 : 0;
+      return `<tr>
+        <td>${f.cliente.razon_social}${f.costoIncompleto ? ' <span class="hint">(costo incompleto)</span>' : ''}</td>
+        <td>${f.cliente.localidad || '—'}</td>
+        <td>${FORMATO_PESOS(f.facturado)}</td>
+        <td>${FORMATO_PESOS(f.costo)}</td>
+        <td>${FORMATO_PESOS(m)}</td>
+        <td>${Math.round(pct)}%</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="6" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
+    document.getElementById('rentClienteResultado').style.display = 'block';
+  } catch (e) { reportError(e); }
+  finally { btn.disabled = false; btn.textContent = 'Calcular'; }
+});
+
 // ---------------- Opción 2: agregar un producto suelto, sin reemplazar nada ----------------
 document.getElementById('btnAgregarArticuloManual').addEventListener('click', async () => {
   const nombre = document.getElementById('manArticuloNombre').value.trim();
