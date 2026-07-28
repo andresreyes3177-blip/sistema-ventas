@@ -1755,6 +1755,41 @@ const DB_RAW = {
   },
   upsertArticulos: async (rows) => { const { error } = await sb.from('articulos').upsert(rows, { onConflict: 'codigo_erp' }); if (error) throw error; },
   updateArticulo: async (id, payload) => { const { error } = await sb.from('articulos').update(payload).eq('id', id); if (error) throw error; },
+  // ---------------- Rentabilidad (costo por artículo + cotización dólar) ----------------
+  // Tabla aparte de articulos, con su propio permiso a nivel de base de
+  // datos (puede_ver_rentabilidad) — si el usuario logueado no tiene
+  // permiso, esto devuelve vacío en vez de error, y la pantalla ni se
+  // muestra (ver puedeVerRentabilidad() más abajo).
+  listArticulosCostos: async () => {
+    const porPagina = 1000;
+    let desde = 0;
+    let todas = [];
+    while (true) {
+      const { data, error } = await sb.from('articulos_costos').select('*').order('articulo_id', { ascending: true }).range(desde, desde + porPagina - 1);
+      if (error) throw error;
+      todas = todas.concat(data);
+      if (data.length < porPagina) break;
+      desde += porPagina;
+    }
+    return todas;
+  },
+  upsertCostoArticulo: async (articuloId, { costo_usd, costo_ars }) => {
+    const { error } = await sb.from('articulos_costos').upsert(
+      { articulo_id: articuloId, costo_usd, costo_ars, actualizado_en: new Date().toISOString() },
+      { onConflict: 'articulo_id' }
+    );
+    if (error) throw error;
+  },
+  listCotizacionesDolar: async () => {
+    const { data, error } = await sb.from('cotizaciones_dolar').select('*').order('fecha', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+  upsertCotizacionDolar: async ({ fecha, valor }) => {
+    const { error } = await sb.from('cotizaciones_dolar').upsert({ fecha, valor }, { onConflict: 'fecha' });
+    if (error) throw error;
+  },
+  deleteCotizacionDolar: async (id) => { const { error } = await sb.from('cotizaciones_dolar').delete().eq('id', id); if (error) throw error; },
   // Sube el catálogo nuevo y borra los artículos viejos que ya no vienen en el
   // archivo (así reimportar el catálogo alcanza para actualizarlo del todo).
   // No toca los artículos "VTA-..." (creados automáticamente al importar Ventas)
