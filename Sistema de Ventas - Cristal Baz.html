@@ -623,6 +623,7 @@
 
       <div class="actions">
         <button class="btn-secondary" id="btnEliminarSeleccionados" disabled>🗑️ Eliminar seleccionados (<span id="seleccionadosCount">0</span>)</button>
+        <button class="btn-secondary" id="btnOrdenConsumoClientes">Ordenar: Mayor a menor consumo ▾</button>
       </div>
       <div class="table-scroll">
         <table>
@@ -1371,7 +1372,7 @@
       <p class="hint" id="vtaRankingResumenHint"></p>
       <div class="table-scroll">
         <table>
-          <thead><tr><th>#</th><th>Artículo</th><th>Subrubro</th><th id="vtaRankingMesCol1"></th><th id="vtaRankingMesCol2"></th><th id="vtaRankingMesCol3"></th><th>Cantidad total</th><th>Monto</th></tr></thead>
+          <thead><tr><th>#</th><th>Artículo</th><th>Subrubro</th><th id="vtaRankingMesCol1"></th><th id="vtaRankingMesCol2"></th><th id="vtaRankingMesCol3"></th><th id="vtaRankingMesColActual"></th><th>Cantidad total</th><th>Monto</th></tr></thead>
           <tbody id="vtaRankingTbody"></tbody>
           <tfoot><tr id="vtaRankingTotalesFila" class="fila-totales"></tr></tfoot>
         </table>
@@ -2444,13 +2445,20 @@ function renderClientes() {
   }
 
   document.getElementById('clientesEmptyHint').style.display = cache.clientes.length === 0 ? 'block' : 'none';
+
+  const consumoPorCliente = {};
+  lista.forEach(c => { consumoPorCliente[c.id] = calcularConsumo(c.id); });
+  lista = lista.slice().sort((a, b) => ordenConsumoClientes === 'desc'
+    ? consumoPorCliente[b.id].consumoMes - consumoPorCliente[a.id].consumoMes
+    : consumoPorCliente[a.id].consumoMes - consumoPorCliente[b.id].consumoMes);
+
   tbody.innerHTML = lista.map(c => {
     const tagIds = cache.clienteTagsPorCliente[c.id] || [];
     const tagsHtml = tagIds.map(tid => {
       const t = cache.tags.find(x => x.id === tid);
       return t ? `<span class="badge badge-coral">${t.nombre}</span>` : '';
     }).join('');
-    const { consumoMes, porcentaje } = calcularConsumo(c.id);
+    const { consumoMes, porcentaje } = consumoPorCliente[c.id];
     const pctHtml = porcentaje === null ? '<span class="hint">sin historial</span>' :
       `<span class="badge ${porcentaje >= 100 ? 'badge-green' : porcentaje >= 80 ? 'badge-orange' : 'badge-red'}">${porcentaje}%</span>`;
     const ultimoContacto = cache.ultimoContactoPorCliente[c.id];
@@ -2519,6 +2527,13 @@ document.getElementById('btnEliminarSeleccionados').addEventListener('click', as
 ['clienteBuscar','filtroLocalidad','filtroContactoDesde','filtroContactoHasta','filtroConsumoDesde','filtroConsumoHasta','filtroEstadoComercial'].forEach(id => {
   document.getElementById(id).addEventListener('input', renderClientes);
   document.getElementById(id).addEventListener('change', renderClientes);
+});
+
+let ordenConsumoClientes = 'desc'; // 'desc' = mayor a menor consumo del mes, 'asc' = menor a mayor
+document.getElementById('btnOrdenConsumoClientes').addEventListener('click', () => {
+  ordenConsumoClientes = ordenConsumoClientes === 'desc' ? 'asc' : 'desc';
+  document.getElementById('btnOrdenConsumoClientes').textContent = 'Ordenar: ' + (ordenConsumoClientes === 'desc' ? 'Mayor a menor consumo ▾' : 'Menor a mayor consumo ▴');
+  renderClientes();
 });
 document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
   ['clienteBuscar','filtroLocalidad','filtroContactoDesde','filtroContactoHasta','filtroConsumoDesde','filtroConsumoHasta','filtroEstadoComercial'].forEach(id => document.getElementById(id).value = '');
@@ -6905,9 +6920,12 @@ let vtaRankingOrden = 'desc'; // 'desc' = mayor a menor, 'asc' = menor a mayor (
 function renderVtaRanking() {
   const clavesCronologico = obtenerUltimos3MesesClaves().slice().reverse(); // más viejo primero
   const clavesSet = new Set(clavesCronologico);
+  const hoy = new Date();
+  const claveMesActual = claveMes(hoy.getFullYear(), hoy.getMonth());
   clavesCronologico.forEach((clave, i) => {
     document.getElementById('vtaRankingMesCol' + (i + 1)).textContent = nombreMesClave(clave);
   });
+  document.getElementById('vtaRankingMesColActual').textContent = nombreMesClave(claveMesActual) + ' (en curso)';
 
   const articulosTildados = new Set(Array.from(document.querySelectorAll('[data-vta-rank-articulo]:checked')).map(chk => chk.value));
   const porArticulo = {};
@@ -6921,8 +6939,18 @@ function renderVtaRanking() {
       porArticulo[v.articulo_id].monto += Number(v.monto || 0);
     });
 
+  // Mes en curso aparte: no suma a "Cantidad total" ni a "Monto" (esos
+  // quedan como "últimos 3 meses completos", igual que antes) — es solo
+  // una columna extra para ver cómo viene el mes que todavía no cerró.
+  const cantidadMesActualPorArticulo = {};
+  cache.ventas
+    .filter(v => v.cliente_id === vtaClienteRankingId && v.articulo_id && articulosTildados.has(v.articulo_id) && claveDeFecha(v.fecha) === claveMesActual)
+    .forEach(v => {
+      cantidadMesActualPorArticulo[v.articulo_id] = (cantidadMesActualPorArticulo[v.articulo_id] || 0) + Number(v.cantidad || 0);
+    });
+
   const ranking = Object.entries(porArticulo)
-    .map(([articuloId, datos]) => ({ articulo: cache.articulos.find(a => a.id === articuloId), ...datos }))
+    .map(([articuloId, datos]) => ({ articulo: cache.articulos.find(a => a.id === articuloId), cantidadMesActual: cantidadMesActualPorArticulo[articuloId] || 0, ...datos }))
     .filter(f => f.articulo)
     .sort((a, b) => vtaRankingOrden === 'desc' ? b.cantidadTotal - a.cantidadTotal : a.cantidadTotal - b.cantidadTotal);
 
@@ -6937,25 +6965,28 @@ function renderVtaRanking() {
       <td>${f.articulo.nombre}</td>
       <td>${f.articulo.subrubro || '—'}</td>
       ${clavesCronologico.map(clave => `<td>${f.cantidadPorMes[clave] || 0}</td>`).join('')}
+      <td>${f.cantidadMesActual}</td>
       <td>${f.cantidadTotal}</td>
       <td>$${f.monto.toLocaleString('es-AR')}</td>
     </tr>
-  `).join('') || '<tr><td colspan="8" class="hint">No hay compras que coincidan con los filtros.</td></tr>';
+  `).join('') || '<tr><td colspan="9" class="hint">No hay compras que coincidan con los filtros.</td></tr>';
 
   const totalesPorMes = clavesCronologico.map(clave => ranking.reduce((s, f) => s + (f.cantidadPorMes[clave] || 0), 0));
+  const totalMesActual = ranking.reduce((s, f) => s + f.cantidadMesActual, 0);
   const totalCantidad = ranking.reduce((s, f) => s + f.cantidadTotal, 0);
   document.getElementById('vtaRankingTotalesFila').innerHTML = ranking.length ? `
     <td></td>
     <td>Total</td>
     <td></td>
     ${totalesPorMes.map(t => `<td>${t}</td>`).join('')}
+    <td>${totalMesActual}</td>
     <td>${totalCantidad}</td>
     <td>$${totalMonto.toLocaleString('es-AR')}</td>
   ` : '';
 
   // Se guarda lo último renderizado (ya con los filtros/orden aplicados) para
   // que Imprimir/Excel exporten exactamente lo que se está viendo en pantalla.
-  vtaRankingUltimo = { clavesCronologico, ranking, totalCantidad, totalMonto };
+  vtaRankingUltimo = { clavesCronologico, claveMesActual, ranking, totalCantidad, totalMonto };
 }
 
 let vtaRankingUltimo = null;
@@ -6967,14 +6998,16 @@ function tituloClienteRanking() {
 
 document.getElementById('btnVtaRankingImprimir').addEventListener('click', () => {
   if (!vtaRankingUltimo || !vtaRankingUltimo.ranking.length) { alert('No hay datos para imprimir con los filtros actuales.'); return; }
-  const { clavesCronologico, ranking, totalCantidad, totalMonto } = vtaRankingUltimo;
+  const { clavesCronologico, claveMesActual, ranking, totalCantidad, totalMonto } = vtaRankingUltimo;
   const nombresMes = clavesCronologico.map(nombreMesClave);
+  const nombreMesActual = nombreMesClave(claveMesActual) + ' (en curso)';
+  const totalMesActual = ranking.reduce((s, f) => s + f.cantidadMesActual, 0);
   const cuerpo = `
     <table>
-      <thead><tr><th>#</th><th>Artículo</th><th>Subrubro</th>${nombresMes.map(n => `<th>${n}</th>`).join('')}<th>Cantidad total</th><th>Monto</th></tr></thead>
+      <thead><tr><th>#</th><th>Artículo</th><th>Subrubro</th>${nombresMes.map(n => `<th>${n}</th>`).join('')}<th>${nombreMesActual}</th><th>Cantidad total</th><th>Monto</th></tr></thead>
       <tbody>
-        ${ranking.map((f, i) => `<tr><td>${i + 1}</td><td>${f.articulo.nombre}</td><td>${f.articulo.subrubro || '—'}</td>${clavesCronologico.map(c => `<td>${f.cantidadPorMes[c] || 0}</td>`).join('')}<td>${f.cantidadTotal}</td><td>$${f.monto.toLocaleString('es-AR')}</td></tr>`).join('')}
-        <tr style="font-weight:bold;"><td></td><td>Total</td><td></td>${clavesCronologico.map(c => `<td>${ranking.reduce((s, f) => s + (f.cantidadPorMes[c] || 0), 0)}</td>`).join('')}<td>${totalCantidad}</td><td>$${totalMonto.toLocaleString('es-AR')}</td></tr>
+        ${ranking.map((f, i) => `<tr><td>${i + 1}</td><td>${f.articulo.nombre}</td><td>${f.articulo.subrubro || '—'}</td>${clavesCronologico.map(c => `<td>${f.cantidadPorMes[c] || 0}</td>`).join('')}<td>${f.cantidadMesActual}</td><td>${f.cantidadTotal}</td><td>$${f.monto.toLocaleString('es-AR')}</td></tr>`).join('')}
+        <tr style="font-weight:bold;"><td></td><td>Total</td><td></td>${clavesCronologico.map(c => `<td>${ranking.reduce((s, f) => s + (f.cantidadPorMes[c] || 0), 0)}</td>`).join('')}<td>${totalMesActual}</td><td>${totalCantidad}</td><td>$${totalMonto.toLocaleString('es-AR')}</td></tr>
       </tbody>
     </table>`;
   imprimirHtml(`Ranking de consumo — ${tituloClienteRanking()}`, cuerpo);
@@ -6982,11 +7015,13 @@ document.getElementById('btnVtaRankingImprimir').addEventListener('click', () =>
 
 document.getElementById('btnVtaRankingExcel').addEventListener('click', () => {
   if (!vtaRankingUltimo || !vtaRankingUltimo.ranking.length) { alert('No hay datos para exportar con los filtros actuales.'); return; }
-  const { clavesCronologico, ranking } = vtaRankingUltimo;
+  const { clavesCronologico, claveMesActual, ranking } = vtaRankingUltimo;
   const nombresMes = clavesCronologico.map(nombreMesClave);
+  const nombreMesActual = nombreMesClave(claveMesActual) + ' (en curso)';
   const filas = ranking.map((f, i) => {
     const fila = { '#': i + 1, 'Artículo': f.articulo.nombre, 'Subrubro': f.articulo.subrubro || '' };
     clavesCronologico.forEach((c, idx) => { fila[nombresMes[idx]] = f.cantidadPorMes[c] || 0; });
+    fila[nombreMesActual] = f.cantidadMesActual;
     fila['Cantidad total'] = f.cantidadTotal;
     fila['Monto'] = f.monto;
     return fila;
