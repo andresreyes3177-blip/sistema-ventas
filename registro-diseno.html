@@ -231,6 +231,15 @@ function esImagen(nombreArchivo) {
   return /\.(png|jpe?g|gif|webp|svg)$/i.test(nombreArchivo || '');
 }
 
+const MESES_ES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+function nombreMesClave(clave) {
+  const [anio, mes] = clave.split('-');
+  return `${MESES_ES[parseInt(mes, 10) - 1]} ${anio}`;
+}
+
+const ESTADO_LABEL = { terminado: '✅ Terminado', en_progreso: '🕓 En progreso' };
+let entradasCache = [];
+
 function calcularRacha(entradas, nombre) {
   const fechasPropias = new Set(entradas.filter(e => e.nombre_persona === nombre).map(e => e.fecha));
   let racha = 0;
