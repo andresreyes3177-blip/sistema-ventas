@@ -4020,7 +4020,7 @@ function filaClienteHtml(a) {
 }
 
 function renderResumenMes() {
-  const { alertas, analizadosList, baseMeses } = calcularAlertasResumenMes();
+  const { alertas, analizadosList, baseMeses, clientesFiltrados } = calcularAlertasResumenMes();
   const mesElegido = document.getElementById('rmMes').value;
   const [nombreBase1, nombreBase2, nombreBase3] = baseMeses.map(m => m ? nombreMesClave(m) : '');
   const nombreMesElegido = mesElegido ? nombreMesClave(mesElegido) : '';
@@ -4028,6 +4028,7 @@ function renderResumenMes() {
   const totalVentasMes = sumarFilas(analizadosList, 'ventasMes');
   const totalPromedio = sumarFilas(analizadosList, 'promedio');
   const pctVsPromedioGeneral = totalPromedio > 0 ? Math.round((totalVentasMes / totalPromedio) * 100) : null;
+  const acumuladoAnual = mesElegido ? calcularAcumuladoAnual(clientesFiltrados, mesElegido) : { pctAcumuladoVsAnioAnterior: null };
 
   document.getElementById('rmTrimestreHint').textContent = mesElegido
     ? `Promedio trimestral base: ${nombreBase1}, ${nombreBase2} y ${nombreBase3} — se evalúa contra ${nombreMesElegido}. Este mismo trimestre base se usa fijo para los 3 meses del trimestre siguiente.`
@@ -4037,7 +4038,8 @@ function renderResumenMes() {
   document.getElementById('rmStatPorcentaje').textContent = analizadosList.length > 0 ? `${((alertas.length / analizadosList.length) * 100).toFixed(0)}%` : '0%';
   document.getElementById('rmStatMontoMes').textContent = `$${Math.round(totalVentasMes).toLocaleString('es-AR')}`;
   document.getElementById('rmStatMontoPromedio').textContent = `$${Math.round(totalPromedio).toLocaleString('es-AR')}`;
-  document.getElementById('rmStatPctPromedio').textContent = pctVsPromedioGeneral === null ? '—' : `${pctVsPromedioGeneral}%`;
+  document.getElementById('rmStatPctPromedio').textContent = formatoArribaAbajo(pctVsPromedioGeneral);
+  document.getElementById('rmStatPctAnual').textContent = formatoArribaAbajo(acumuladoAnual.pctAcumuladoVsAnioAnterior);
   document.getElementById('rmResumenHint').textContent = `${alertas.length} cliente(s) en alerta sobre ${analizadosList.length} analizado(s) (clientes con ventas en el trimestre base).`;
 
   // Agrupado por Localidad — cada una con sus clientes en alerta y su propio total.
