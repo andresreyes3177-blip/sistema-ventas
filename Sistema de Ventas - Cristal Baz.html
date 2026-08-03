@@ -3881,6 +3881,122 @@ async function refreshRentabilidadTab() {
   renderRentDolarTabla();
   refreshRentFiltroGrupo();
 }
+// ---------------- Resumen de Mes (caída de consumo vs. promedio histórico) ----------------
+// Misma lógica que ya se usa a mano en Excel: un cliente entra en alerta si
+// vendió por debajo de un umbral calculado sobre su propio promedio histórico
+// (todos los meses con venta > 0, anteriores al mes analizado). El "análisis
+// parcial" (a mitad de mes) usa un umbral más estricto: la MITAD del promedio.
+let rmUltimo = null;
+
+document.querySelector('[data-tab="resumenmes"]').addEventListener('click', () => {
+  if (!document.getElementById('rmMes').value) {
+    const hoy = new Date();
+    const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+    document.getElementById('rmMes').value = claveMes(mesAnterior.getFullYear(), mesAnterior.getMonth());
+  }
+  const localidades = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))].sort();
+  const actualLocalidad = document.getElementById('rmLocalidad').value;
+  document.getElementById('rmLocalidad').innerHTML = '<option value="">Todas</option>' + localidades.map(l => `<option value="${l}">${l}</option>`).join('');
+  if (localidades.includes(actualLocalidad)) document.getElementById('rmLocalidad').value = actualLocalidad;
+  renderResumenMes();
+});
+
+['rmMes', 'rmTipo', 'rmLocalidad'].forEach(id => document.getElementById(id).addEventListener('change', renderResumenMes));
+
+function calcularAlertasResumenMes() {
+  const mesInput = document.getElementById('rmMes').value; // "YYYY-MM"
+  const tipo = document.getElementById('rmTipo').value; // 'mensual' | 'parcial'
+  const localidadFiltro = document.getElementById('rmLocalidad').value;
+  if (!mesInput) return { alertas: [], analizados: 0 };
+
+  let clientesFiltrados = cache.clientes;
+  if (localidadFiltro) clientesFiltrados = clientesFiltrados.filter(c => c.localidad === localidadFiltro);
+
+  const alertas = [];
+  let analizados = 0;
+  clientesFiltrados.forEach(c => {
+    const meses = cache.consumoPorClienteMes[c.id] || {};
+    const historicos = Object.entries(meses)
+      .filter(([clave, datos]) => clave < mesInput && Number(datos.total) > 0)
+      .map(([, datos]) => Number(datos.total));
+    if (!historicos.length) return; // sin historial previo, no hay con qué comparar
+    analizados++;
+    const promedio = historicos.reduce((a, b) => a + b, 0) / historicos.length;
+    const ventasMes = Number((meses[mesInput] || {}).total || 0);
+    const umbral = tipo === 'parcial' ? (promedio / 2) * 0.80 : promedio * 0.80;
+    if (ventasMes < umbral) {
+      const caidaPct = Math.round((1 - ventasMes / promedio) * 100);
+      alertas.push({ cliente: c, promedio, ventasMes, caidaPct });
+    }
+  });
+  alertas.sort((a, b) => b.caidaPct - a.caidaPct);
+  return { alertas, analizados };
+}
+
+function renderResumenMes() {
+  const { alertas, analizados } = calcularAlertasResumenMes();
+  document.getElementById('rmStatAnalizados').textContent = analizados;
+  document.getElementById('rmStatAlerta').textContent = alertas.length;
+  document.getElementById('rmStatPorcentaje').textContent = analizados > 0 ? `${((alertas.length / analizados) * 100).toFixed(0)}%` : '0%';
+  document.getElementById('rmResumenHint').textContent = `${alertas.length} cliente(s) en alerta sobre ${analizados} analizado(s) (clientes con historial previo al mes elegido).`;
+
+  document.getElementById('rmTbody').innerHTML = alertas.map(a => `
+    <tr>
+      <td>${a.cliente.localidad || '<span class="hint">Sin definir</span>'}</td>
+      <td>${a.cliente.razon_social}</td>
+      <td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td>
+      <td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td>
+      <td><span class="badge badge-red">${a.caidaPct}%</span></td>
+    </tr>
+  `).join('') || '<tr><td colspan="5" class="hint">No hay clientes en alerta con los filtros actuales.</td></tr>';
+
+  const porLocalidad = {};
+  alertas.forEach(a => { const loc = a.cliente.localidad || 'Sin definir'; porLocalidad[loc] = (porLocalidad[loc] || 0) + 1; });
+  const localidadesOrdenadas = Object.keys(porLocalidad).sort((a, b) => porLocalidad[b] - porLocalidad[a]);
+  destruirChart('rmChartLocalidad');
+  vtaChartsInstancias.rmChartLocalidad = new Chart(document.getElementById('rmChartLocalidad'), {
+    type: 'bar',
+    data: { labels: localidadesOrdenadas, datasets: [{ label: 'Clientes en alerta', data: localidadesOrdenadas.map(l => porLocalidad[l]), backgroundColor: PALETA_GRAFICOS[5] }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+
+  rmUltimo = { mes: document.getElementById('rmMes').value, tipo: document.getElementById('rmTipo').value, localidadFiltro: document.getElementById('rmLocalidad').value, alertas, analizados };
+}
+
+document.getElementById('btnRmChartImg').addEventListener('click', () => descargarGraficoImagen('rmChartLocalidad', 'Clientes en alerta por localidad'));
+
+document.getElementById('btnRmExcel').addEventListener('click', () => {
+  if (!rmUltimo || !rmUltimo.alertas.length) { alert('No hay clientes en alerta para exportar con los filtros actuales.'); return; }
+  const filasExcel = rmUltimo.alertas.map(a => ({
+    'Localidad': a.cliente.localidad || '',
+    'Cliente': a.cliente.razon_social,
+    'Promedio histórico': Math.round(a.promedio),
+    'Ventas del mes': Math.round(a.ventasMes),
+    'Caída %': a.caidaPct,
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasExcel), 'Resumen de Mes');
+  const nombreTipo = rmUltimo.tipo === 'parcial' ? 'Analisis parcial' : 'Informe mensual';
+  XLSX.writeFile(wb, `${nombreTipo} - ${rmUltimo.mes} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
+});
+
+document.getElementById('btnRmImprimir').addEventListener('click', () => {
+  if (!rmUltimo || !rmUltimo.alertas.length) { alert('No hay clientes en alerta para imprimir con los filtros actuales.'); return; }
+  const d = rmUltimo;
+  const nombreTipo = d.tipo === 'parcial' ? 'Análisis parcial del mes' : 'Informe mensual de ventas';
+  const cuerpo = `
+    <p>Mes analizado: <strong>${nombreMesClave(d.mes)}</strong> — Tipo: <strong>${nombreTipo}</strong>${d.localidadFiltro ? ' — Localidad: <strong>' + d.localidadFiltro + '</strong>' : ''}</p>
+    <p>Clientes analizados: <strong>${d.analizados}</strong> — Clientes en alerta: <strong>${d.alertas.length}</strong> (${d.analizados > 0 ? ((d.alertas.length / d.analizados) * 100).toFixed(0) : 0}%)</p>
+    <img src="${vtaChartsInstancias.rmChartLocalidad.toBase64Image()}" style="max-width:100%;">
+    <table>
+      <thead><tr><th>Localidad</th><th>Cliente</th><th>Promedio histórico</th><th>Ventas del mes</th><th>Caída</th></tr></thead>
+      <tbody>
+        ${d.alertas.map(a => `<tr><td>${a.cliente.localidad || '—'}</td><td>${a.cliente.razon_social}</td><td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td><td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td><td>${a.caidaPct}%</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+  imprimirHtml(`${nombreTipo} — ${nombreMesClave(d.mes)}`, cuerpo);
+});
+
 document.querySelector('[data-tab="rentabilidad"]').addEventListener('click', refreshRentabilidadTab);
 
 document.getElementById('btnRentArticuloCalcular').addEventListener('click', async () => {
