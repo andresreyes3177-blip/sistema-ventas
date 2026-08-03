@@ -1506,6 +1506,49 @@
       </div>
     </div>
   </section>
+  <section id="tab-resumenmes" class="tab-panel" style="display:none;">
+    <div class="card">
+      <h2>📅 Resumen de Mes — Detección de caída de consumo</h2>
+      <p class="hint">Compara las ventas del mes elegido contra el promedio histórico de cada cliente, para detectar caídas y armar el reporte que se entrega a Dirección. Un cliente entra en alerta si vendió más de un 20% por debajo de su propio promedio histórico (o de la mitad de ese promedio, en el análisis parcial de mitad de mes).</p>
+      <div class="field-row">
+        <div class="field"><label>Mes a analizar</label><input type="month" id="rmMes"></div>
+        <div class="field"><label>Tipo de análisis</label>
+          <select id="rmTipo">
+            <option value="mensual">Mes cerrado (cae más de 20% vs. su promedio)</option>
+            <option value="parcial">Análisis parcial — a mitad de mes (cae más de 20% vs. la MITAD de su promedio)</option>
+          </select>
+        </div>
+        <div class="field"><label>Localidad</label><select id="rmLocalidad"><option value="">Todas</option></select></div>
+      </div>
+      <div class="stat-pills">
+        <div class="stat-pill">Clientes analizados<strong id="rmStatAnalizados">0</strong></div>
+        <div class="stat-pill">Clientes en alerta<strong id="rmStatAlerta">0</strong></div>
+        <div class="stat-pill">% en alerta<strong id="rmStatPorcentaje">0%</strong></div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn-secondary" id="btnRmImprimir">🖨️ Imprimir / Guardar PDF</button>
+        <button type="button" class="btn-secondary" id="btnRmExcel">📊 Descargar Excel</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Clientes en alerta por Localidad</h3>
+      <div class="chart-box"><canvas id="rmChartLocalidad"></canvas></div>
+      <div class="actions"><button type="button" class="btn-secondary" id="btnRmChartImg">📷 Descargar imagen</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Detalle de clientes en alerta</h3>
+      <p class="hint" id="rmResumenHint"></p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Localidad</th><th>Cliente</th><th>Promedio histórico</th><th>Ventas del mes</th><th>Caída</th></tr></thead>
+          <tbody id="rmTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <section id="tab-rentabilidad" class="tab-panel" style="display:none;">
     <div class="card">
       <h2>💵 Cotización del dólar</h2>
