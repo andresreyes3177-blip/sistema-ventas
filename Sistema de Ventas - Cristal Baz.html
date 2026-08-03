@@ -4173,10 +4173,8 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
     ${d.localidadesOrdenadas.map(loc => `
       <h2>📍 ${loc} (${d.porLocalidad[loc].length} cliente(s) en alerta)</h2>
       <table>
-        <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th><th>${d.nombreMesElegido}</th><th>Caída</th></tr></thead>
-        <tbody>${d.porLocalidad[loc].map(a => `<tr><td>${a.cliente.razon_social}</td><td>$${Math.round(a.v1).toLocaleString('es-AR')}</td><td>$${Math.round(a.v2).toLocaleString('es-AR')}</td><td>$${Math.round(a.v3).toLocaleString('es-AR')}</td><td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td><td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td><td>${a.caidaPct}%</td></tr>`).join('')}
-        <tr style="font-weight:bold;"><td>Total</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'v1')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'v2')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'v3')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'promedio')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMes')).toLocaleString('es-AR')}</td><td></td></tr>
-        </tbody>
+        <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th><th>${d.nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
+        <tbody>${d.porLocalidad[loc].map(filaClienteHtml).join('')}${filaTotalesHtml(d.porLocalidad[loc])}</tbody>
       </table>`).join('')}`;
   imprimirHtml(`${nombreTipo} — ${nombreMesClave(d.mes)}`, cuerpo);
 });
