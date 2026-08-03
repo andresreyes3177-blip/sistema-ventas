@@ -384,6 +384,16 @@ document.getElementById('btnDescargarExcel').addEventListener('click', () => {
   }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), 'Registro de Diseño');
+
+  // Solo se puede armar la lista de días sin registrar para UN mes puntual
+  // (con "Todos los meses" elegido, se usa el mes actual como referencia).
+  const hoy = new Date();
+  const claveMesFaltantes = mesFiltro || `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+  const nombre = nombreActualPersona();
+  const faltantes = nombre ? calcularDiasFaltantes(entradasCache, nombre, claveMesFaltantes) : [];
+  const filasFaltantes = faltantes.map(d => ({ 'Día sin registrar': d.split('-').reverse().join('/'), 'Persona': nombre }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasFaltantes.length ? filasFaltantes : [{ 'Día sin registrar': 'Ninguno 🎉', 'Persona': nombre }]), 'Días sin registrar');
+
   const nombreMes = mesFiltro ? nombreMesClave(mesFiltro) : 'Todos los meses';
   XLSX.writeFile(wb, `Registro de Diseño - ${nombreMes}.xlsx`);
 });
