@@ -297,10 +297,54 @@ async function refrescarFeed() {
   renderFeedFiltrado();
 }
 
+// Días hábiles (lunes a viernes) de un mes "YYYY-MM" que ya pasaron (no
+// cuenta los que todavía no llegaron, si el mes elegido es el actual).
+function diasHabilesDelMes(claveMes) {
+  const [anio, mes] = claveMes.split('-').map(Number);
+  const ultimoDia = new Date(anio, mes, 0).getDate();
+  const hoy = new Date();
+  const hoyClave = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+  const dias = [];
+  for (let d = 1; d <= ultimoDia; d++) {
+    const claveFecha = `${anio}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (claveFecha > hoyClave) continue;
+    const diaSemana = new Date(anio, mes - 1, d).getDay(); // 0=domingo, 6=sábado
+    if (diaSemana === 0 || diaSemana === 6) continue;
+    dias.push(claveFecha);
+  }
+  return dias;
+}
+
+function calcularDiasFaltantes(entradas, nombre, claveMes) {
+  const fechasConEntrada = new Set(entradas.filter(e => e.nombre_persona === nombre).map(e => e.fecha));
+  return diasHabilesDelMes(claveMes).filter(d => !fechasConEntrada.has(d));
+}
+
+function nombreActualPersona() {
+  const nombres = [...new Set(entradasCache.map(e => e.nombre_persona))].sort();
+  return document.getElementById('nombrePersona').value.trim() || nombres[0] || '';
+}
+
+function renderDiasFaltantes() {
+  const mesFiltro = document.getElementById('filtroMes').value;
+  const hoy = new Date();
+  const claveMesParaFaltantes = mesFiltro || `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
+  const nombre = nombreActualPersona();
+  const cont = document.getElementById('diasFaltantes');
+  if (!nombre) { cont.innerHTML = '<span class="hint">Escribí tu nombre arriba para ver esto.</span>'; return; }
+
+  const faltantes = calcularDiasFaltantes(entradasCache, nombre, claveMesParaFaltantes);
+  cont.innerHTML = faltantes.length
+    ? `<p class="hint" style="margin-bottom:8px;">${nombreMesClave(claveMesParaFaltantes)} — ${faltantes.length} día(s) sin registrar:</p>
+       <div>${faltantes.map(d => `<span class="estado-badge en_progreso" style="margin:2px 4px 2px 0;">${d.split('-').reverse().join('/')}</span>`).join('')}</div>`
+    : `<p class="hint">🎉 ${nombreMesClave(claveMesParaFaltantes)} — no falta ningún día hábil por registrar.</p>`;
+}
+
 function renderFeedFiltrado() {
   const mesFiltro = document.getElementById('filtroMes').value;
   const entradas = mesFiltro ? entradasCache.filter(e => claveMesDeFecha(e.fecha) === mesFiltro) : entradasCache;
 
+  renderDiasFaltantes();
   document.getElementById('emptyHint').style.display = entradas.length ? 'none' : 'block';
   document.getElementById('feed').innerHTML = entradas.map(e => {
     const fechaFmt = (e.fecha || '').split('-').reverse().join('/');
