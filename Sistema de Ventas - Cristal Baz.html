@@ -4019,17 +4019,33 @@ document.getElementById('btnRmChartImg').addEventListener('click', () => descarg
 
 document.getElementById('btnRmExcel').addEventListener('click', () => {
   if (!rmUltimo || !rmUltimo.alertas.length) { alert('No hay clientes en alerta para exportar con los filtros actuales.'); return; }
-  const filasExcel = rmUltimo.alertas.map(a => ({
-    'Localidad': a.cliente.localidad || '',
-    'Cliente': a.cliente.razon_social,
-    'Promedio histórico': Math.round(a.promedio),
-    'Ventas del mes': Math.round(a.ventasMes),
-    'Caída %': a.caidaPct,
-  }));
+  const d = rmUltimo;
+  const filasExcel = [];
+  d.localidadesOrdenadas.forEach(loc => {
+    d.porLocalidad[loc].forEach(a => {
+      filasExcel.push({
+        'Localidad': loc,
+        'Cliente': a.cliente.razon_social,
+        [d.nombreMesMenos2]: Math.round(a.ventasMesMenos2),
+        [d.nombreMesMenos1]: Math.round(a.ventasMesMenos1),
+        [d.nombreMesElegido]: Math.round(a.ventasMes),
+        'Promedio (trimestral)': Math.round(a.promedio),
+        'Caída %': a.caidaPct,
+      });
+    });
+    filasExcel.push({
+      'Localidad': `Total ${loc}`, 'Cliente': '',
+      [d.nombreMesMenos2]: Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMesMenos2')),
+      [d.nombreMesMenos1]: Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMesMenos1')),
+      [d.nombreMesElegido]: Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMes')),
+      'Promedio (trimestral)': Math.round(sumarFilas(d.porLocalidad[loc], 'promedio')),
+      'Caída %': '',
+    });
+  });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasExcel), 'Resumen de Mes');
-  const nombreTipo = rmUltimo.tipo === 'parcial' ? 'Analisis parcial' : 'Informe mensual';
-  XLSX.writeFile(wb, `${nombreTipo} - ${rmUltimo.mes} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const nombreTipo = d.tipo === 'parcial' ? 'Analisis parcial' : 'Informe mensual';
+  XLSX.writeFile(wb, `${nombreTipo} - ${d.mes} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
 });
 
 document.getElementById('btnRmImprimir').addEventListener('click', () => {
@@ -4038,14 +4054,16 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
   const nombreTipo = d.tipo === 'parcial' ? 'Análisis parcial del mes' : 'Informe mensual de ventas';
   const cuerpo = `
     <p>Mes analizado: <strong>${nombreMesClave(d.mes)}</strong> — Tipo: <strong>${nombreTipo}</strong>${d.localidadFiltro ? ' — Localidad: <strong>' + d.localidadFiltro + '</strong>' : ''}</p>
-    <p>Clientes analizados: <strong>${d.analizados}</strong> — Clientes en alerta: <strong>${d.alertas.length}</strong> (${d.analizados > 0 ? ((d.alertas.length / d.analizados) * 100).toFixed(0) : 0}%)</p>
+    <p>Clientes analizados: <strong>${d.analizados}</strong> — Clientes en alerta: <strong>${d.alertas.length}</strong> (${d.analizados > 0 ? ((d.alertas.length / d.analizados) * 100).toFixed(0) : 0}%) — Monto total del mes: <strong>$${Math.round(sumarFilas(d.alertas, 'ventasMes')).toLocaleString('es-AR')}</strong> — Monto total del promedio: <strong>$${Math.round(sumarFilas(d.alertas, 'promedio')).toLocaleString('es-AR')}</strong></p>
     <img src="${vtaChartsInstancias.rmChartLocalidad.toBase64Image()}" style="max-width:100%;">
-    <table>
-      <thead><tr><th>Localidad</th><th>Cliente</th><th>Promedio histórico</th><th>Ventas del mes</th><th>Caída</th></tr></thead>
-      <tbody>
-        ${d.alertas.map(a => `<tr><td>${a.cliente.localidad || '—'}</td><td>${a.cliente.razon_social}</td><td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td><td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td><td>${a.caidaPct}%</td></tr>`).join('')}
-      </tbody>
-    </table>`;
+    ${d.localidadesOrdenadas.map(loc => `
+      <h2>📍 ${loc} (${d.porLocalidad[loc].length} cliente(s) en alerta)</h2>
+      <table>
+        <thead><tr><th>Cliente</th><th>${d.nombreMesMenos2}</th><th>${d.nombreMesMenos1}</th><th>${d.nombreMesElegido}</th><th>Promedio (trim.)</th><th>Caída</th></tr></thead>
+        <tbody>${d.porLocalidad[loc].map(a => `<tr><td>${a.cliente.razon_social}</td><td>$${Math.round(a.ventasMesMenos2).toLocaleString('es-AR')}</td><td>$${Math.round(a.ventasMesMenos1).toLocaleString('es-AR')}</td><td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td><td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td><td>${a.caidaPct}%</td></tr>`).join('')}
+        <tr style="font-weight:bold;"><td>Total</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMesMenos2')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMesMenos1')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMes')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'promedio')).toLocaleString('es-AR')}</td><td></td></tr>
+        </tbody>
+      </table>`).join('')}`;
   imprimirHtml(`${nombreTipo} — ${nombreMesClave(d.mes)}`, cuerpo);
 });
 
