@@ -4150,11 +4150,11 @@ document.getElementById('btnRmExcel').addEventListener('click', () => {
   filasExcel.push({
     'Localidad': 'TOTAL GENERAL', 'Cliente': `${g.lista.length} cliente(s) — ${g.etiqueta}`,
     [d.nombreBase1]: '', [d.nombreBase2]: '', [d.nombreBase3]: '',
-    'Promedio (trimestral)': Math.round(d.totalPromedio), [d.nombreMesElegido]: Math.round(d.totalVentasMes),
-    'Caída %': d.pctVsPromedioGeneral === null ? '' : (100 - d.pctVsPromedioGeneral),
+    'Promedio (trimestral)': Math.round(sumarFilas(g.lista, 'promedio')), [d.nombreMesElegido]: Math.round(sumarFilas(g.lista, 'ventasMes')),
+    'Caída %': '',
   });
-  d.localidadesOrdenadas.forEach(loc => {
-    d.porLocalidad[loc].forEach(a => {
+  g.localidadesOrdenadas.forEach(loc => {
+    g.porLocalidad[loc].forEach(a => {
       filasExcel.push({
         'Localidad': loc,
         'Cliente': a.cliente.razon_social,
@@ -4168,18 +4168,19 @@ document.getElementById('btnRmExcel').addEventListener('click', () => {
     });
     filasExcel.push({
       'Localidad': `Total ${loc}`, 'Cliente': '',
-      [d.nombreBase1]: Math.round(sumarFilas(d.porLocalidad[loc], 'v1')),
-      [d.nombreBase2]: Math.round(sumarFilas(d.porLocalidad[loc], 'v2')),
-      [d.nombreBase3]: Math.round(sumarFilas(d.porLocalidad[loc], 'v3')),
-      'Promedio (trimestral)': Math.round(sumarFilas(d.porLocalidad[loc], 'promedio')),
-      [d.nombreMesElegido]: Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMes')),
+      [d.nombreBase1]: Math.round(sumarFilas(g.porLocalidad[loc], 'v1')),
+      [d.nombreBase2]: Math.round(sumarFilas(g.porLocalidad[loc], 'v2')),
+      [d.nombreBase3]: Math.round(sumarFilas(g.porLocalidad[loc], 'v3')),
+      'Promedio (trimestral)': Math.round(sumarFilas(g.porLocalidad[loc], 'promedio')),
+      [d.nombreMesElegido]: Math.round(sumarFilas(g.porLocalidad[loc], 'ventasMes')),
       'Caída %': '',
     });
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasExcel), 'Resumen de Mes');
   const nombreTipo = d.tipo === 'parcial' ? 'Analisis parcial' : 'Informe mensual';
-  XLSX.writeFile(wb, `${nombreTipo} - ${d.mes} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const sufijoVista = g.esTodos ? 'todos' : 'alerta';
+  XLSX.writeFile(wb, `${nombreTipo} - ${d.mes} - ${sufijoVista} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
 });
 
 document.getElementById('btnRmImprimir').addEventListener('click', () => {
