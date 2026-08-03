@@ -198,6 +198,7 @@ document.getElementById('btnRegistrar').addEventListener('click', async () => {
       fecha, nombre_persona: nombre, tarea,
       descripcion: document.getElementById('descripcion').value.trim() || null,
       horas: document.getElementById('horas').value ? Number(document.getElementById('horas').value) : null,
+      estado: document.getElementById('estado').value,
       archivo_url: url, archivo_nombre: nombreArchivo,
     });
     if (error) throw error;
@@ -206,6 +207,7 @@ document.getElementById('btnRegistrar').addEventListener('click', async () => {
     document.getElementById('tarea').value = '';
     document.getElementById('descripcion').value = '';
     document.getElementById('horas').value = '';
+    document.getElementById('estado').value = 'terminado';
     archivoElegido = null;
     archivoInput.value = '';
     dropZone.classList.remove('tiene-archivo');
