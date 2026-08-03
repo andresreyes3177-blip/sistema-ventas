@@ -4020,15 +4020,22 @@ function filaTotalesHtml(lista) {
   </tr>`;
 }
 
+// Los clientes en alerta se marcan con TODA la fila en negro/blanco (no solo
+// un badge de color) — así se distingue igual de bien en una impresora
+// blanco y negro, no solo en pantalla. El ⚠️ en el nombre es un respaldo
+// extra por si algún visor no imprime fondos.
 function filaClienteHtml(a) {
-  return `<tr>
-    <td>${a.cliente.razon_social}</td>
+  const filaStyle = a.enAlerta ? ' style="background:#000; color:#fff; font-weight:bold;"' : '';
+  const marca = a.enAlerta ? '⚠️ ' : '';
+  const textoVsPromedio = a.caidaPct >= 0 ? `${a.caidaPct}% abajo` : `${Math.abs(a.caidaPct)}% arriba`;
+  return `<tr${filaStyle}>
+    <td>${marca}${a.cliente.razon_social}</td>
     <td>$${Math.round(a.v1).toLocaleString('es-AR')}</td>
     <td>$${Math.round(a.v2).toLocaleString('es-AR')}</td>
     <td>$${Math.round(a.v3).toLocaleString('es-AR')}</td>
     <td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td>
     <td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td>
-    <td><span class="badge badge-red">${a.caidaPct}%</span></td>
+    <td>${textoVsPromedio}</td>
   </tr>`;
 }
 
