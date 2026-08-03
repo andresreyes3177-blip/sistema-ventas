@@ -4197,11 +4197,13 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
     <p>Acumulado del año vs. promedio del año anterior: <strong>${formatoArribaAbajo(d.acumuladoAnual.pctAcumuladoVsAnioAnterior)}</strong></p>
     <img src="${vtaChartsInstancias.rmChartLocalidad.toBase64Image()}" style="max-width:100%;">
     ${g.localidadesOrdenadas.map(loc => `
-      <h2>📍 ${loc} (${g.porLocalidad[loc].length} cliente(s))</h2>
-      <table>
-        <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th><th>${d.nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
-        <tbody>${g.porLocalidad[loc].map(filaClienteHtml).join('')}${filaTotalesHtml(g.porLocalidad[loc])}</tbody>
-      </table>`).join('')}`;
+      <div class="bloque-localidad">
+        <h2>📍 ${loc} (${g.porLocalidad[loc].length} cliente(s))</h2>
+        <table>
+          <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th><th>${d.nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
+          <tbody>${g.porLocalidad[loc].map(filaClienteHtml).join('')}${filaTotalesHtml(g.porLocalidad[loc])}</tbody>
+        </table>
+      </div>`).join('')}`;
   imprimirHtml(`${nombreTipo} — ${g.etiqueta} — ${nombreMesClave(d.mes)}`, cuerpo);
 });
 
