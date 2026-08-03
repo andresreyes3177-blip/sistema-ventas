@@ -3905,6 +3905,15 @@ document.querySelector('[data-tab="resumenmes"]').addEventListener('click', () =
 
 ['rmMes', 'rmTipo', 'rmLocalidad'].forEach(id => document.getElementById(id).addEventListener('change', renderResumenMes));
 
+document.querySelectorAll('[data-subtab-rm]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-subtab-rm]').forEach(b => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    document.querySelectorAll('.rm-subpanel').forEach(p => p.style.display = 'none');
+    document.getElementById('rm-' + btn.dataset.subtabRm).style.display = 'block';
+  });
+});
+
 // Resta n meses a una clave "YYYY-MM" (mismo formato que usa claveMes/claveDeFecha).
 function restarMesesClave(clave, n) {
   const [anio, mes] = clave.split('-').map(Number);
