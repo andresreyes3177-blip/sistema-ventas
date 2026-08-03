@@ -3958,7 +3958,41 @@ function calcularAlertasResumenMes() {
   });
 
   const alertas = analizadosList.filter(a => a.enAlerta).sort((a, b) => b.caidaPct - a.caidaPct);
-  return { alertas, analizadosList, baseMeses };
+  return { alertas, analizadosList, baseMeses, clientesFiltrados };
+}
+
+// Formatea un porcentaje respecto a 100 como "X% arriba" / "X% abajo" — más
+// claro para Dirección que un número crudo como "85%" o "112%".
+function formatoArribaAbajo(pct) {
+  if (pct === null) return '—';
+  const diff = pct - 100;
+  return diff >= 0 ? `${diff}% arriba` : `${Math.abs(diff)}% abajo`;
+}
+
+function totalMensualAgregado(clientesFiltrados, clave) {
+  return clientesFiltrados.reduce((s, c) => {
+    const meses = cache.consumoPorClienteMes[c.id] || {};
+    return s + Number((meses[clave] || {}).total || 0);
+  }, 0);
+}
+
+// Compara el promedio mensual acumulado del año en curso (Enero hasta el mes
+// elegido) contra el promedio mensual del año anterior YA CERRADO (Enero a
+// Diciembre completo) — "cómo venimos este año vs. cómo cerró el año pasado".
+function calcularAcumuladoAnual(clientesFiltrados, mesInput) {
+  const [anioElegido, mesNum] = mesInput.split('-').map(Number); // mesNum: 1-12
+  const anioAnterior = anioElegido - 1;
+
+  let sumaAnioAnterior = 0;
+  for (let m = 1; m <= 12; m++) sumaAnioAnterior += totalMensualAgregado(clientesFiltrados, claveMes(anioAnterior, m - 1));
+  const promedioAnioAnteriorCompleto = sumaAnioAnterior / 12;
+
+  let sumaAnioActual = 0;
+  for (let m = 1; m <= mesNum; m++) sumaAnioActual += totalMensualAgregado(clientesFiltrados, claveMes(anioElegido, m - 1));
+  const promedioAnioActualAcumulado = sumaAnioActual / mesNum;
+
+  const pctAcumuladoVsAnioAnterior = promedioAnioAnteriorCompleto > 0 ? Math.round((promedioAnioActualAcumulado / promedioAnioAnteriorCompleto) * 100) : null;
+  return { promedioAnioAnteriorCompleto, promedioAnioActualAcumulado, pctAcumuladoVsAnioAnterior };
 }
 
 function filaTotalesHtml(lista) {
