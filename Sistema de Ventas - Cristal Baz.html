@@ -4202,7 +4202,7 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
         <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th><th>${d.nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
         <tbody>${g.porLocalidad[loc].map(filaClienteHtml).join('')}${filaTotalesHtml(g.porLocalidad[loc])}</tbody>
       </table>`).join('')}`;
-  imprimirHtml(`${nombreTipo} — ${nombreMesClave(d.mes)}`, cuerpo);
+  imprimirHtml(`${nombreTipo} — ${g.etiqueta} — ${nombreMesClave(d.mes)}`, cuerpo);
 });
 
 document.querySelector('[data-tab="rentabilidad"]').addEventListener('click', refreshRentabilidadTab);
