@@ -1543,7 +1543,12 @@
     </div>
 
     <p class="hint" id="rmResumenHint"></p>
-    <div id="rmGrupos"></div>
+    <div class="toolbar mode-tabs">
+      <button type="button" class="btn-tab is-active" data-subtab-rm="todos">👥 Todos los clientes</button>
+      <button type="button" class="btn-tab" data-subtab-rm="alerta">⚠️ Solo en alerta</button>
+    </div>
+    <div id="rm-todos" class="rm-subpanel"><div id="rmGruposTodos"></div></div>
+    <div id="rm-alerta" class="rm-subpanel" style="display:none;"><div id="rmGruposAlerta"></div></div>
   </section>
 
   <section id="tab-rentabilidad" class="tab-panel" style="display:none;">
