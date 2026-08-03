@@ -25,10 +25,21 @@
   .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
   .card h2 { margin-top: 0; font-size: var(--fs-md); color: var(--navy); }
   label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--navy); margin-bottom: 4px; }
-  input[type=text], input[type=date], input[type=number], textarea {
+  input[type=text], input[type=date], input[type=month], input[type=number], textarea, select {
     width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
     font-size: var(--fs-sm); font-family: inherit; margin-bottom: 14px; background: #fff;
   }
+  .estado-badge { display: inline-block; font-size: var(--fs-xs); font-weight: 700; padding: 2px 9px; border-radius: 999px; margin-left: 8px; vertical-align: middle; }
+  .estado-badge.terminado { background: #eaf6ec; color: var(--green); }
+  .estado-badge.en_progreso { background: #fff2e0; color: #a2650c; }
+  .historial-filtro { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }
+  .historial-filtro > div { flex: 1; min-width: 160px; }
+  .historial-filtro label { margin-bottom: 4px; }
+  .btn-secondary {
+    background: #fff; color: var(--navy); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 16px; font-size: var(--fs-sm); font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .btn-secondary:hover { background: #f4f6f8; }
   textarea { resize: vertical; min-height: 70px; }
   .drop-zone {
     border: 2px dashed var(--border); border-radius: 10px; padding: 24px 12px; text-align: center;
