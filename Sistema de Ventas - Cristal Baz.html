@@ -313,6 +313,7 @@
       <button class="btn-tab" data-subtab-cc="porcontactar">Por contactar</button>
       <button class="btn-tab" data-subtab-cc="clientes">Clientes</button>
       <button class="btn-tab" data-subtab-cc="historial">Historial</button>
+      <button class="btn-tab" data-subtab-cc="dashboard">📊 Dashboard</button>
       <button class="btn-tab" data-subtab-cc="recordatorios">📅 Recordatorios</button>
       <button class="btn-tab" data-subtab-cc="importar">Importar Excel</button>
     </div>
@@ -423,6 +424,58 @@
           <table>
             <thead><tr><th>Fecha</th><th>Cliente</th><th>Tipo</th><th>Persona</th><th>Resultado</th><th>Se ofreció</th><th>Detalle</th><th>Registrado por</th><th></th></tr></thead>
             <tbody id="ccHistTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="cc-dashboard" class="cc-subpanel" style="display:none;">
+      <div class="card">
+        <h2>📊 Dashboard de Centro de Contactos</h2>
+        <p class="hint">Resumen visual de los contactos del período elegido — pensado para copiar o exportar en una presentación.</p>
+        <div class="field-row">
+          <div class="field"><label>Fecha desde</label><input type="date" id="ccDashDesde"></div>
+          <div class="field"><label>Fecha hasta</label><input type="date" id="ccDashHasta"></div>
+          <div class="field" style="align-self:flex-end;"><button type="button" class="btn-secondary" id="btnCcDashLimpiar">Limpiar filtro</button></div>
+          <div class="field" style="align-self:flex-end;"><button type="button" class="btn-primary" id="btnCcDashImprimir">🖨️ Imprimir / Guardar PDF de todo el dashboard</button></div>
+        </div>
+        <div class="stat-pills">
+          <div class="stat-pill">Contactos en el período<strong id="ccDashStatTotal">0</strong></div>
+          <div class="stat-pill">Terminaron en "Compró"<strong id="ccDashStatCompro">0</strong></div>
+          <div class="stat-pill">Clientes distintos contactados<strong id="ccDashStatClientes">0</strong></div>
+          <div class="stat-pill">Vendedor más activo<strong id="ccDashStatTopVendedor">—</strong></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Evolución de contactos en el período</h3>
+        <div class="chart-box"><canvas id="ccChartEvolucion"></canvas></div>
+        <div class="actions"><button type="button" class="btn-secondary" id="btnCcChartEvolucionImg">📷 Descargar imagen</button></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Por tipo de contacto</h3>
+          <div class="chart-box"><canvas id="ccChartTipo"></canvas></div>
+          <div class="dash-leyenda-subrubro" id="ccChartTipoLeyenda"></div>
+          <div class="actions"><button type="button" class="btn-secondary" id="btnCcChartTipoImg">📷 Descargar imagen</button></div>
+        </div>
+        <div class="card">
+          <h3>Por resultado</h3>
+          <div class="chart-box"><canvas id="ccChartResultado"></canvas></div>
+          <div class="dash-leyenda-subrubro" id="ccChartResultadoLeyenda"></div>
+          <div class="actions"><button type="button" class="btn-secondary" id="btnCcChartResultadoImg">📷 Descargar imagen</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Por vendedor</h3>
+        <div class="chart-box"><canvas id="ccChartVendedor"></canvas></div>
+        <div class="actions"><button type="button" class="btn-secondary" id="btnCcChartVendedorImg">📷 Descargar imagen</button></div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Vendedor</th><th>Contactos</th><th>Terminaron en "Compró"</th><th>% efectividad</th></tr></thead>
+            <tbody id="ccDashVendedorTbody"></tbody>
           </table>
         </div>
       </div>
@@ -578,11 +631,31 @@
 
     <div class="card">
       <h2>Historial de visitas</h2>
+      <div class="field-row">
+        <div class="field"><label>Fecha desde</label><input type="date" id="vstHistDesde"></div>
+        <div class="field"><label>Fecha hasta</label><input type="date" id="vstHistHasta"></div>
+        <div class="field" style="align-self:flex-end;"><button type="button" class="btn-secondary" id="btnVstHistLimpiar">Limpiar filtro</button></div>
+      </div>
       <div class="table-scroll">
         <table>
           <thead><tr><th>Fecha</th><th>Localidad</th><th>Ópticas visitadas</th><th>Notas</th><th></th></tr></thead>
           <tbody id="vstHistorialTbody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Dashboard de visitas</h2>
+      <p class="hint">Usa el período elegido arriba en "Historial de visitas" — pensado para copiar o exportar en una presentación.</p>
+      <div class="stat-pills">
+        <div class="stat-pill">Visitas en el período<strong id="vstDashStatTotal">0</strong></div>
+        <div class="stat-pill">Localidades visitadas<strong id="vstDashStatLocalidades">0</strong></div>
+        <div class="stat-pill">Ópticas distintas visitadas<strong id="vstDashStatOpticas">0</strong></div>
+      </div>
+      <div class="chart-box"><canvas id="vstChartLocalidad"></canvas></div>
+      <div class="actions">
+        <button type="button" class="btn-secondary" id="btnVstChartImg">📷 Descargar imagen</button>
+        <button type="button" class="btn-primary" id="btnVstDashImprimir">🖨️ Imprimir / Guardar PDF de todo el dashboard</button>
       </div>
     </div>
   </section>
@@ -4488,8 +4561,19 @@ function renderPanoramaVisitas(localidades) {
   `).join('') || '<tr><td colspan="5" class="hint">Todavía no hay localidades con clientes cargados.</td></tr>';
 }
 
+function filasVisitasFiltradas() {
+  const desde = document.getElementById('vstHistDesde').value;
+  const hasta = document.getElementById('vstHistHasta').value;
+  return cache.visitasLocalidad.filter(v => {
+    const fecha = (v.fecha || '').toString().slice(0, 10);
+    if (desde && fecha < desde) return false;
+    if (hasta && fecha > hasta) return false;
+    return true;
+  });
+}
+
 function renderHistorialVisitas() {
-  const filas = cache.visitasLocalidad.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const filas = filasVisitasFiltradas().slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   document.getElementById('vstHistorialTbody').innerHTML = filas.map(v => {
     const nombresClientes = (v.clientes_visitados || []).map(id => cache.clientes.find(c => c.id === id)?.razon_social).filter(Boolean);
     const puedeBorrar = currentProfile && currentProfile.role === 'admin';
@@ -4508,7 +4592,67 @@ function renderHistorialVisitas() {
       try { await DB.deleteVisitaLocalidad(btn.dataset.borrarVisita); await refreshVisitasTab(); } catch (e) { reportError(e); }
     });
   });
+
+  renderVstDashboard(filas);
 }
+
+document.getElementById('vstHistDesde').addEventListener('change', renderHistorialVisitas);
+document.getElementById('vstHistHasta').addEventListener('change', renderHistorialVisitas);
+document.getElementById('btnVstHistLimpiar').addEventListener('click', () => {
+  document.getElementById('vstHistDesde').value = '';
+  document.getElementById('vstHistHasta').value = '';
+  renderHistorialVisitas();
+});
+
+// ---------------- Visitas: Dashboard (resumen visual para presentaciones) ----------------
+let vstDashboardUltimo = null;
+
+function renderVstDashboard(filas) {
+  const desde = document.getElementById('vstHistDesde').value;
+  const hasta = document.getElementById('vstHistHasta').value;
+
+  const localidadesDistintas = new Set(filas.map(v => v.localidad).filter(Boolean));
+  const opticasDistintas = new Set(filas.flatMap(v => v.clientes_visitados || []));
+
+  document.getElementById('vstDashStatTotal').textContent = filas.length;
+  document.getElementById('vstDashStatLocalidades').textContent = localidadesDistintas.size;
+  document.getElementById('vstDashStatOpticas').textContent = opticasDistintas.size;
+
+  const porLocalidad = {};
+  filas.forEach(v => { if (v.localidad) porLocalidad[v.localidad] = (porLocalidad[v.localidad] || 0) + 1; });
+  const localidadesOrdenadas = Object.keys(porLocalidad).sort((a, b) => porLocalidad[b] - porLocalidad[a]);
+
+  destruirChart('vstChartLocalidad');
+  vtaChartsInstancias.vstChartLocalidad = new Chart(document.getElementById('vstChartLocalidad'), {
+    type: 'bar',
+    data: { labels: localidadesOrdenadas, datasets: [{ label: 'Visitas', data: localidadesOrdenadas.map(l => porLocalidad[l]), backgroundColor: PALETA_GRAFICOS[2] }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+
+  vstDashboardUltimo = { desde, hasta, filas, localidadesDistintas: localidadesDistintas.size, opticasDistintas: opticasDistintas.size };
+}
+
+document.getElementById('btnVstChartImg').addEventListener('click', () => descargarGraficoImagen('vstChartLocalidad', 'Visitas por localidad'));
+
+document.getElementById('btnVstDashImprimir').addEventListener('click', () => {
+  if (!vstDashboardUltimo || !vstDashboardUltimo.filas.length) { alert('No hay datos para imprimir con los filtros actuales.'); return; }
+  const d = vstDashboardUltimo;
+  const rango = (d.desde || d.hasta) ? ` (${d.desde || '...'} a ${d.hasta || '...'})` : '';
+  const filasOrdenadas = d.filas.slice().sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+  const cuerpo = `
+    <p>Visitas: <strong>${d.filas.length}</strong> — Localidades visitadas: <strong>${d.localidadesDistintas}</strong> — Ópticas distintas visitadas: <strong>${d.opticasDistintas}</strong></p>
+    <img src="${vtaChartsInstancias.vstChartLocalidad.toBase64Image()}" style="max-width:100%;">
+    <table>
+      <thead><tr><th>Fecha</th><th>Localidad</th><th>Ópticas visitadas</th><th>Notas</th></tr></thead>
+      <tbody>
+        ${filasOrdenadas.map(v => {
+          const nombresClientes = (v.clientes_visitados || []).map(id => cache.clientes.find(c => c.id === id)?.razon_social).filter(Boolean);
+          return `<tr><td>${fechaDDMMAAAA(v.fecha)}</td><td>${v.localidad}</td><td>${nombresClientes.join(', ') || '—'}</td><td>${v.detalle || '—'}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  imprimirHtml(`Dashboard de visitas${rango}`, cuerpo);
+});
 
 document.getElementById('btnVstRegistrar').addEventListener('click', async () => {
   const localidad = document.getElementById('vstLocalidad').value;
@@ -5249,6 +5393,147 @@ document.getElementById('btnCcHistExcel').addEventListener('click', () => {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasExcel), 'Historial de contactos');
   XLSX.writeFile(wb, `Historial de contactos - ${new Date().toISOString().slice(0, 10)}.xlsx`);
+});
+
+// ---------------- Centro de Contactos: Dashboard (resumen visual para presentaciones) ----------------
+const CC_TIPO_LABEL = { llamada: 'Llamada', mensaje: 'Mensaje', visita: 'Visita' };
+const CC_RESULTADO_LABEL = { compro: 'Compró', no_interesado: 'No interesado', volver_a_contactar: 'Volver a contactar' };
+let ccDashboardUltimo = null;
+
+document.querySelector('[data-subtab-cc="dashboard"]').addEventListener('click', async () => {
+  await refreshCcHistorial();
+  renderCcDashboard();
+});
+
+function filasCcDashboardFiltradas() {
+  const desde = document.getElementById('ccDashDesde').value;
+  const hasta = document.getElementById('ccDashHasta').value;
+  return ccHistorialTodas.filter(i => {
+    const fechaStr = (i.fecha || '').toString().slice(0, 10);
+    if (desde && fechaStr < desde) return false;
+    if (hasta && fechaStr > hasta) return false;
+    return true;
+  });
+}
+
+function renderCcDashboard() {
+  const filas = filasCcDashboardFiltradas();
+  const desde = document.getElementById('ccDashDesde').value;
+  const hasta = document.getElementById('ccDashHasta').value;
+
+  const totalCompro = filas.filter(i => i.resultado === 'compro').length;
+  const clientesDistintos = new Set(filas.map(i => i.cliente_id)).size;
+
+  const porVendedor = {};
+  filas.forEach(i => {
+    const id = i.creado_por || '_sin_';
+    if (!porVendedor[id]) porVendedor[id] = { total: 0, compro: 0 };
+    porVendedor[id].total++;
+    if (i.resultado === 'compro') porVendedor[id].compro++;
+  });
+  const nombreVendedor = (id) => id === '_sin_' ? 'Sin registrar' : (cache.profiles.find(p => p.id === id)?.nombre || '(usuario eliminado)');
+  const filasVendedor = Object.entries(porVendedor)
+    .map(([id, d]) => ({ id, nombre: nombreVendedor(id), ...d }))
+    .sort((a, b) => b.total - a.total);
+  const topVendedor = filasVendedor[0];
+
+  document.getElementById('ccDashStatTotal').textContent = filas.length;
+  document.getElementById('ccDashStatCompro').textContent = totalCompro;
+  document.getElementById('ccDashStatClientes').textContent = clientesDistintos;
+  document.getElementById('ccDashStatTopVendedor').textContent = topVendedor ? `${topVendedor.nombre} (${topVendedor.total})` : '—';
+
+  // Evolución día por día del período elegido.
+  const porDia = {};
+  filas.forEach(i => {
+    const dia = (i.fecha || '').toString().slice(0, 10);
+    porDia[dia] = (porDia[dia] || 0) + 1;
+  });
+  const diasOrdenados = Object.keys(porDia).sort();
+  destruirChart('ccChartEvolucion');
+  vtaChartsInstancias.ccChartEvolucion = new Chart(document.getElementById('ccChartEvolucion'), {
+    type: 'line',
+    data: { labels: diasOrdenados.map(fechaDDMMAAAA), datasets: [{ label: 'Contactos', data: diasOrdenados.map(d => porDia[d]), borderColor: PALETA_GRAFICOS[1], backgroundColor: PALETA_GRAFICOS[1], tension: 0.2 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+
+  const porTipo = {};
+  filas.forEach(i => { porTipo[i.tipo] = (porTipo[i.tipo] || 0) + 1; });
+  const tiposKeys = Object.keys(porTipo);
+  destruirChart('ccChartTipo');
+  vtaChartsInstancias.ccChartTipo = new Chart(document.getElementById('ccChartTipo'), {
+    type: 'doughnut',
+    data: { labels: tiposKeys.map(t => CC_TIPO_LABEL[t] || t), datasets: [{ data: tiposKeys.map(t => porTipo[t]), backgroundColor: PALETA_GRAFICOS }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+  });
+  document.getElementById('ccChartTipoLeyenda').innerHTML = tiposKeys.map((t, i) => `
+    <div class="dash-leyenda-item"><span class="dash-leyenda-color" style="background:${PALETA_GRAFICOS[i % PALETA_GRAFICOS.length]}"></span>${CC_TIPO_LABEL[t] || t}: ${porTipo[t]}</div>
+  `).join('') || '<span class="hint">Sin datos en el período.</span>';
+
+  const porResultado = {};
+  filas.forEach(i => { const r = i.resultado || 'sin_definir'; porResultado[r] = (porResultado[r] || 0) + 1; });
+  const resultadosKeys = Object.keys(porResultado);
+  destruirChart('ccChartResultado');
+  vtaChartsInstancias.ccChartResultado = new Chart(document.getElementById('ccChartResultado'), {
+    type: 'doughnut',
+    data: { labels: resultadosKeys.map(r => CC_RESULTADO_LABEL[r] || 'Sin definir'), datasets: [{ data: resultadosKeys.map(r => porResultado[r]), backgroundColor: PALETA_GRAFICOS }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
+  });
+  document.getElementById('ccChartResultadoLeyenda').innerHTML = resultadosKeys.map((r, i) => `
+    <div class="dash-leyenda-item"><span class="dash-leyenda-color" style="background:${PALETA_GRAFICOS[i % PALETA_GRAFICOS.length]}"></span>${CC_RESULTADO_LABEL[r] || 'Sin definir'}: ${porResultado[r]}</div>
+  `).join('') || '<span class="hint">Sin datos en el período.</span>';
+
+  destruirChart('ccChartVendedor');
+  vtaChartsInstancias.ccChartVendedor = new Chart(document.getElementById('ccChartVendedor'), {
+    type: 'bar',
+    data: { labels: filasVendedor.map(f => f.nombre), datasets: [{ label: 'Contactos', data: filasVendedor.map(f => f.total), backgroundColor: PALETA_GRAFICOS[0] }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
+  });
+  document.getElementById('ccDashVendedorTbody').innerHTML = filasVendedor.map(f => `
+    <tr>
+      <td>${f.nombre}</td>
+      <td>${f.total}</td>
+      <td>${f.compro}</td>
+      <td>${f.total > 0 ? ((f.compro / f.total) * 100).toFixed(0) : 0}%</td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" class="hint">No hay contactos que coincidan con el período.</td></tr>';
+
+  ccDashboardUltimo = { desde, hasta, filas, totalCompro, clientesDistintos, topVendedor, filasVendedor };
+}
+
+document.getElementById('ccDashDesde').addEventListener('change', renderCcDashboard);
+document.getElementById('ccDashHasta').addEventListener('change', renderCcDashboard);
+document.getElementById('btnCcDashLimpiar').addEventListener('click', () => {
+  document.getElementById('ccDashDesde').value = '';
+  document.getElementById('ccDashHasta').value = '';
+  renderCcDashboard();
+});
+
+document.getElementById('btnCcChartEvolucionImg').addEventListener('click', () => descargarGraficoImagen('ccChartEvolucion', 'Evolucion de contactos'));
+document.getElementById('btnCcChartTipoImg').addEventListener('click', () => descargarGraficoImagen('ccChartTipo', 'Contactos por tipo'));
+document.getElementById('btnCcChartResultadoImg').addEventListener('click', () => descargarGraficoImagen('ccChartResultado', 'Contactos por resultado'));
+document.getElementById('btnCcChartVendedorImg').addEventListener('click', () => descargarGraficoImagen('ccChartVendedor', 'Contactos por vendedor'));
+
+document.getElementById('btnCcDashImprimir').addEventListener('click', () => {
+  if (!ccDashboardUltimo || !ccDashboardUltimo.filas.length) { alert('No hay datos para imprimir con los filtros actuales.'); return; }
+  const d = ccDashboardUltimo;
+  const rango = (d.desde || d.hasta) ? ` (${d.desde || '...'} a ${d.hasta || '...'})` : '';
+  const cuerpo = `
+    <p>Contactos: <strong>${d.filas.length}</strong> — Terminaron en "Compró": <strong>${d.totalCompro}</strong> — Clientes distintos: <strong>${d.clientesDistintos}</strong> — Vendedor más activo: <strong>${d.topVendedor ? d.topVendedor.nombre + ' (' + d.topVendedor.total + ')' : '—'}</strong></p>
+    <h2>Evolución</h2>
+    <img src="${vtaChartsInstancias.ccChartEvolucion.toBase64Image()}" style="max-width:100%;">
+    <h2>Por tipo</h2>
+    <img src="${vtaChartsInstancias.ccChartTipo.toBase64Image()}" style="max-width:400px;">
+    <h2>Por resultado</h2>
+    <img src="${vtaChartsInstancias.ccChartResultado.toBase64Image()}" style="max-width:400px;">
+    <h2>Por vendedor</h2>
+    <img src="${vtaChartsInstancias.ccChartVendedor.toBase64Image()}" style="max-width:100%;">
+    <table>
+      <thead><tr><th>Vendedor</th><th>Contactos</th><th>Terminaron en "Compró"</th><th>% efectividad</th></tr></thead>
+      <tbody>
+        ${d.filasVendedor.map(f => `<tr><td>${f.nombre}</td><td>${f.total}</td><td>${f.compro}</td><td>${f.total > 0 ? ((f.compro / f.total) * 100).toFixed(0) : 0}%</td></tr>`).join('')}
+      </tbody>
+    </table>`;
+  imprimirHtml(`Dashboard de Centro de Contactos${rango}`, cuerpo);
 });
 
 // ---------------- Centro de Contactos: Recordatorios de "Volver a contactar" ----------------
@@ -7158,6 +7443,17 @@ function renderChartEvolucionAnual(idsPermitidos) {
 
 function destruirChart(idCanvas) {
   if (vtaChartsInstancias[idCanvas]) { vtaChartsInstancias[idCanvas].destroy(); delete vtaChartsInstancias[idCanvas]; }
+}
+
+// Descarga cualquier gráfico ya dibujado (de los guardados en vtaChartsInstancias)
+// como imagen PNG — para pegar directo en una presentación (PowerPoint, Slides, etc.).
+function descargarGraficoImagen(idCanvas, nombreArchivo) {
+  const chart = vtaChartsInstancias[idCanvas];
+  if (!chart) { alert('Todavía no hay datos para descargar en este gráfico.'); return; }
+  const a = document.createElement('a');
+  a.href = chart.toBase64Image();
+  a.download = `${nombreArchivo}.png`;
+  a.click();
 }
 
 const FORMATO_PESOS = (v) => '$' + Number(v).toLocaleString('es-AR');
