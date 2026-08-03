@@ -4107,7 +4107,8 @@ function renderResumenMes() {
   }
 
   const porLocalidadTodos = agruparPorLocalidad(analizadosList);
-  const porLocalidad = agruparPorLocalidad(alertas); // se usa también para el gráfico y las exportaciones
+  const localidadesOrdenadasTodos = Object.keys(porLocalidadTodos).sort((a, b) => porLocalidadTodos[b].length - porLocalidadTodos[a].length);
+  const porLocalidad = agruparPorLocalidad(alertas); // se usa también para el gráfico
   const localidadesOrdenadas = Object.keys(porLocalidad).sort((a, b) => porLocalidad[b].length - porLocalidad[a].length);
 
   document.getElementById('rmGruposTodos').innerHTML = htmlGruposPorLocalidad(porLocalidadTodos, '');
@@ -4123,18 +4124,31 @@ function renderResumenMes() {
   rmUltimo = {
     mes: mesElegido, tipo: document.getElementById('rmTipo').value, localidadFiltro: document.getElementById('rmLocalidad').value,
     alertas, analizadosList, nombreBase1, nombreBase2, nombreBase3, nombreMesElegido, porLocalidad, localidadesOrdenadas,
+    porLocalidadTodos, localidadesOrdenadasTodos,
     totalVentasMes, totalPromedio, pctVsPromedioGeneral, acumuladoAnual,
   };
+}
+
+// Según cuál de las dos sub-pestañas (Todos / Solo en alerta) esté activa en
+// pantalla, Excel e Imprimir exportan exactamente esa vista.
+function grupoActivoRm() {
+  const btnActivo = document.querySelector('[data-subtab-rm].is-active');
+  const esTodos = !btnActivo || btnActivo.dataset.subtabRm === 'todos';
+  return esTodos
+    ? { lista: rmUltimo.analizadosList, porLocalidad: rmUltimo.porLocalidadTodos, localidadesOrdenadas: rmUltimo.localidadesOrdenadasTodos, etiqueta: 'Todos los clientes', esTodos: true }
+    : { lista: rmUltimo.alertas, porLocalidad: rmUltimo.porLocalidad, localidadesOrdenadas: rmUltimo.localidadesOrdenadas, etiqueta: 'Solo en alerta', esTodos: false };
 }
 
 document.getElementById('btnRmChartImg').addEventListener('click', () => descargarGraficoImagen('rmChartLocalidad', 'Clientes en alerta por localidad'));
 
 document.getElementById('btnRmExcel').addEventListener('click', () => {
-  if (!rmUltimo || !rmUltimo.alertas.length) { alert('No hay clientes en alerta para exportar con los filtros actuales.'); return; }
+  if (!rmUltimo) { alert('Elegí un mes para analizar primero.'); return; }
+  const g = grupoActivoRm();
+  if (!g.lista.length) { alert(`No hay clientes (${g.etiqueta}) para exportar con los filtros actuales.`); return; }
   const d = rmUltimo;
   const filasExcel = [];
   filasExcel.push({
-    'Localidad': 'TOTAL GENERAL', 'Cliente': `${d.alertas.length} en alerta de ${d.analizadosList.length} analizados`,
+    'Localidad': 'TOTAL GENERAL', 'Cliente': `${g.lista.length} cliente(s) — ${g.etiqueta}`,
     [d.nombreBase1]: '', [d.nombreBase2]: '', [d.nombreBase3]: '',
     'Promedio (trimestral)': Math.round(d.totalPromedio), [d.nombreMesElegido]: Math.round(d.totalVentasMes),
     'Caída %': d.pctVsPromedioGeneral === null ? '' : (100 - d.pctVsPromedioGeneral),
