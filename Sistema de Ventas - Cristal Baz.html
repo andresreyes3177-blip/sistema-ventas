@@ -4047,24 +4047,32 @@ document.getElementById('btnRmExcel').addEventListener('click', () => {
   if (!rmUltimo || !rmUltimo.alertas.length) { alert('No hay clientes en alerta para exportar con los filtros actuales.'); return; }
   const d = rmUltimo;
   const filasExcel = [];
+  filasExcel.push({
+    'Localidad': 'TOTAL GENERAL', 'Cliente': `${d.alertas.length} en alerta de ${d.analizadosList.length} analizados`,
+    [d.nombreBase1]: '', [d.nombreBase2]: '', [d.nombreBase3]: '',
+    'Promedio (trimestral)': Math.round(d.totalPromedio), [d.nombreMesElegido]: Math.round(d.totalVentasMes),
+    'Caída %': d.pctVsPromedioGeneral === null ? '' : (100 - d.pctVsPromedioGeneral),
+  });
   d.localidadesOrdenadas.forEach(loc => {
     d.porLocalidad[loc].forEach(a => {
       filasExcel.push({
         'Localidad': loc,
         'Cliente': a.cliente.razon_social,
-        [d.nombreMesMenos2]: Math.round(a.ventasMesMenos2),
-        [d.nombreMesMenos1]: Math.round(a.ventasMesMenos1),
-        [d.nombreMesElegido]: Math.round(a.ventasMes),
+        [d.nombreBase1]: Math.round(a.v1),
+        [d.nombreBase2]: Math.round(a.v2),
+        [d.nombreBase3]: Math.round(a.v3),
         'Promedio (trimestral)': Math.round(a.promedio),
+        [d.nombreMesElegido]: Math.round(a.ventasMes),
         'Caída %': a.caidaPct,
       });
     });
     filasExcel.push({
       'Localidad': `Total ${loc}`, 'Cliente': '',
-      [d.nombreMesMenos2]: Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMesMenos2')),
-      [d.nombreMesMenos1]: Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMesMenos1')),
-      [d.nombreMesElegido]: Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMes')),
+      [d.nombreBase1]: Math.round(sumarFilas(d.porLocalidad[loc], 'v1')),
+      [d.nombreBase2]: Math.round(sumarFilas(d.porLocalidad[loc], 'v2')),
+      [d.nombreBase3]: Math.round(sumarFilas(d.porLocalidad[loc], 'v3')),
       'Promedio (trimestral)': Math.round(sumarFilas(d.porLocalidad[loc], 'promedio')),
+      [d.nombreMesElegido]: Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMes')),
       'Caída %': '',
     });
   });
@@ -4080,14 +4088,16 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
   const nombreTipo = d.tipo === 'parcial' ? 'Análisis parcial del mes' : 'Informe mensual de ventas';
   const cuerpo = `
     <p>Mes analizado: <strong>${nombreMesClave(d.mes)}</strong> — Tipo: <strong>${nombreTipo}</strong>${d.localidadFiltro ? ' — Localidad: <strong>' + d.localidadFiltro + '</strong>' : ''}</p>
-    <p>Clientes analizados: <strong>${d.analizados}</strong> — Clientes en alerta: <strong>${d.alertas.length}</strong> (${d.analizados > 0 ? ((d.alertas.length / d.analizados) * 100).toFixed(0) : 0}%) — Monto total del mes: <strong>$${Math.round(sumarFilas(d.alertas, 'ventasMes')).toLocaleString('es-AR')}</strong> — Monto total del promedio: <strong>$${Math.round(sumarFilas(d.alertas, 'promedio')).toLocaleString('es-AR')}</strong></p>
+    <p>Promedio trimestral base: <strong>${d.nombreBase1}, ${d.nombreBase2} y ${d.nombreBase3}</strong></p>
+    <p>Clientes analizados: <strong>${d.analizadosList.length}</strong> — Clientes en alerta: <strong>${d.alertas.length}</strong> (${d.analizadosList.length > 0 ? ((d.alertas.length / d.analizadosList.length) * 100).toFixed(0) : 0}%)</p>
+    <p>Total ventas de ${d.nombreMesElegido}: <strong>$${Math.round(d.totalVentasMes).toLocaleString('es-AR')}</strong> — Total promedio trimestral: <strong>$${Math.round(d.totalPromedio).toLocaleString('es-AR')}</strong> — % vs. promedio (general): <strong>${d.pctVsPromedioGeneral === null ? '—' : d.pctVsPromedioGeneral + '%'}</strong></p>
     <img src="${vtaChartsInstancias.rmChartLocalidad.toBase64Image()}" style="max-width:100%;">
     ${d.localidadesOrdenadas.map(loc => `
       <h2>📍 ${loc} (${d.porLocalidad[loc].length} cliente(s) en alerta)</h2>
       <table>
-        <thead><tr><th>Cliente</th><th>${d.nombreMesMenos2}</th><th>${d.nombreMesMenos1}</th><th>${d.nombreMesElegido}</th><th>Promedio (trim.)</th><th>Caída</th></tr></thead>
-        <tbody>${d.porLocalidad[loc].map(a => `<tr><td>${a.cliente.razon_social}</td><td>$${Math.round(a.ventasMesMenos2).toLocaleString('es-AR')}</td><td>$${Math.round(a.ventasMesMenos1).toLocaleString('es-AR')}</td><td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td><td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td><td>${a.caidaPct}%</td></tr>`).join('')}
-        <tr style="font-weight:bold;"><td>Total</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMesMenos2')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMesMenos1')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMes')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'promedio')).toLocaleString('es-AR')}</td><td></td></tr>
+        <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th><th>${d.nombreMesElegido}</th><th>Caída</th></tr></thead>
+        <tbody>${d.porLocalidad[loc].map(a => `<tr><td>${a.cliente.razon_social}</td><td>$${Math.round(a.v1).toLocaleString('es-AR')}</td><td>$${Math.round(a.v2).toLocaleString('es-AR')}</td><td>$${Math.round(a.v3).toLocaleString('es-AR')}</td><td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td><td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td><td>${a.caidaPct}%</td></tr>`).join('')}
+        <tr style="font-weight:bold;"><td>Total</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'v1')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'v2')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'v3')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'promedio')).toLocaleString('es-AR')}</td><td>$${Math.round(sumarFilas(d.porLocalidad[loc], 'ventasMes')).toLocaleString('es-AR')}</td><td></td></tr>
         </tbody>
       </table>`).join('')}`;
   imprimirHtml(`${nombreTipo} — ${nombreMesClave(d.mes)}`, cuerpo);
