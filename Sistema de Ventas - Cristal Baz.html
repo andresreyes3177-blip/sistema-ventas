@@ -4068,27 +4068,41 @@ function renderResumenMes() {
   }
   document.getElementById('rmResumenHint').textContent = `${alertas.length} cliente(s) en alerta sobre ${analizadosList.length} analizado(s) (clientes con ventas en el trimestre base).`;
 
-  // Agrupado por Localidad — cada una con sus clientes en alerta y su propio total.
-  const porLocalidad = {};
-  alertas.forEach(a => {
-    const loc = a.cliente.localidad || 'Sin definir';
-    if (!porLocalidad[loc]) porLocalidad[loc] = [];
-    porLocalidad[loc].push(a);
-  });
+  // Agrupa una lista de clientes por Localidad y arma las tarjetas con tabla
+  // + total — se usa dos veces: una para "Todos los clientes" (analizadosList)
+  // y otra para "Solo en alerta" (alertas), con las mismas columnas.
+  function agruparPorLocalidad(lista) {
+    const porLocalidad = {};
+    lista.forEach(a => {
+      const loc = a.cliente.localidad || 'Sin definir';
+      if (!porLocalidad[loc]) porLocalidad[loc] = [];
+      porLocalidad[loc].push(a);
+    });
+    return porLocalidad;
+  }
+
+  function htmlGruposPorLocalidad(porLocalidad, etiqueta) {
+    const localidadesOrdenadas = Object.keys(porLocalidad).sort((a, b) => porLocalidad[b].length - porLocalidad[a].length);
+    return localidadesOrdenadas.map(loc => `
+      <div class="card">
+        <h3>📍 ${loc} <span class="hint">(${porLocalidad[loc].length} cliente(s)${etiqueta})</span></h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Cliente</th><th>${nombreBase1}</th><th>${nombreBase2}</th><th>${nombreBase3}</th><th>Promedio (trim.)</th><th>${nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
+            <tbody>${porLocalidad[loc].map(filaClienteHtml).join('')}</tbody>
+            <tfoot>${filaTotalesHtml(porLocalidad[loc])}</tfoot>
+          </table>
+        </div>
+      </div>
+    `).join('') || `<div class="card"><p class="hint">No hay clientes${etiqueta} con los filtros actuales.</p></div>`;
+  }
+
+  const porLocalidadTodos = agruparPorLocalidad(analizadosList);
+  const porLocalidad = agruparPorLocalidad(alertas); // se usa también para el gráfico y las exportaciones
   const localidadesOrdenadas = Object.keys(porLocalidad).sort((a, b) => porLocalidad[b].length - porLocalidad[a].length);
 
-  document.getElementById('rmGrupos').innerHTML = localidadesOrdenadas.map(loc => `
-    <div class="card">
-      <h3>📍 ${loc} <span class="hint">(${porLocalidad[loc].length} cliente(s) en alerta)</span></h3>
-      <div class="table-scroll">
-        <table>
-          <thead><tr><th>Cliente</th><th>${nombreBase1}</th><th>${nombreBase2}</th><th>${nombreBase3}</th><th>Promedio (trim.)</th><th>${nombreMesElegido}</th><th>Caída</th></tr></thead>
-          <tbody>${porLocalidad[loc].map(filaClienteHtml).join('')}</tbody>
-          <tfoot>${filaTotalesHtml(porLocalidad[loc])}</tfoot>
-        </table>
-      </div>
-    </div>
-  `).join('') || '<div class="card"><p class="hint">No hay clientes en alerta con los filtros actuales.</p></div>';
+  document.getElementById('rmGruposTodos').innerHTML = htmlGruposPorLocalidad(porLocalidadTodos, '');
+  document.getElementById('rmGruposAlerta').innerHTML = htmlGruposPorLocalidad(porLocalidad, ' en alerta');
 
   destruirChart('rmChartLocalidad');
   vtaChartsInstancias.rmChartLocalidad = new Chart(document.getElementById('rmChartLocalidad'), {
