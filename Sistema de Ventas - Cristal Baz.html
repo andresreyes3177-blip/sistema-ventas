@@ -4184,21 +4184,23 @@ document.getElementById('btnRmExcel').addEventListener('click', () => {
 });
 
 document.getElementById('btnRmImprimir').addEventListener('click', () => {
-  if (!rmUltimo || !rmUltimo.alertas.length) { alert('No hay clientes en alerta para imprimir con los filtros actuales.'); return; }
+  if (!rmUltimo) { alert('Elegí un mes para analizar primero.'); return; }
+  const g = grupoActivoRm();
+  if (!g.lista.length) { alert(`No hay clientes (${g.etiqueta}) para imprimir con los filtros actuales.`); return; }
   const d = rmUltimo;
   const nombreTipo = d.tipo === 'parcial' ? 'Análisis parcial del mes' : 'Informe mensual de ventas';
   const cuerpo = `
-    <p>Mes analizado: <strong>${nombreMesClave(d.mes)}</strong> — Tipo: <strong>${nombreTipo}</strong>${d.localidadFiltro ? ' — Localidad: <strong>' + d.localidadFiltro + '</strong>' : ''}</p>
+    <p>Mes analizado: <strong>${nombreMesClave(d.mes)}</strong> — Tipo: <strong>${nombreTipo}</strong> — Vista: <strong>${g.etiqueta}</strong>${d.localidadFiltro ? ' — Localidad: <strong>' + d.localidadFiltro + '</strong>' : ''}</p>
     <p>Promedio trimestral base: <strong>${d.nombreBase1}, ${d.nombreBase2} y ${d.nombreBase3}</strong></p>
     <p>Clientes analizados: <strong>${d.analizadosList.length}</strong> — Clientes en alerta: <strong>${d.alertas.length}</strong> (${d.analizadosList.length > 0 ? ((d.alertas.length / d.analizadosList.length) * 100).toFixed(0) : 0}%)</p>
     <p>Total ventas de ${d.nombreMesElegido}: <strong>$${Math.round(d.totalVentasMes).toLocaleString('es-AR')}</strong> — Total promedio trimestral: <strong>$${Math.round(d.totalPromedio).toLocaleString('es-AR')}</strong> — % vs. promedio (general): <strong>${formatoArribaAbajo(d.pctVsPromedioGeneral)}</strong></p>
     <p>Acumulado del año vs. promedio del año anterior: <strong>${formatoArribaAbajo(d.acumuladoAnual.pctAcumuladoVsAnioAnterior)}</strong></p>
     <img src="${vtaChartsInstancias.rmChartLocalidad.toBase64Image()}" style="max-width:100%;">
-    ${d.localidadesOrdenadas.map(loc => `
-      <h2>📍 ${loc} (${d.porLocalidad[loc].length} cliente(s) en alerta)</h2>
+    ${g.localidadesOrdenadas.map(loc => `
+      <h2>📍 ${loc} (${g.porLocalidad[loc].length} cliente(s))</h2>
       <table>
         <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th><th>${d.nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
-        <tbody>${d.porLocalidad[loc].map(filaClienteHtml).join('')}${filaTotalesHtml(d.porLocalidad[loc])}</tbody>
+        <tbody>${g.porLocalidad[loc].map(filaClienteHtml).join('')}${filaTotalesHtml(g.porLocalidad[loc])}</tbody>
       </table>`).join('')}`;
   imprimirHtml(`${nombreTipo} — ${nombreMesClave(d.mes)}`, cuerpo);
 });
