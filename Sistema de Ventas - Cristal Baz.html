@@ -3897,11 +3897,24 @@ document.querySelector('[data-tab="resumenmes"]').addEventListener('click', () =
 
 ['rmMes', 'rmTipo', 'rmLocalidad'].forEach(id => document.getElementById(id).addEventListener('change', renderResumenMes));
 
+// Resta n meses a una clave "YYYY-MM" (mismo formato que usa claveMes/claveDeFecha).
+function restarMesesClave(clave, n) {
+  const [anio, mes] = clave.split('-').map(Number);
+  const d = new Date(anio, mes - 1 - n, 1);
+  return claveMes(d.getFullYear(), d.getMonth());
+}
+
+function sumarFilas(alertas, campo) { return alertas.reduce((s, a) => s + a[campo], 0); }
+
 function calcularAlertasResumenMes() {
   const mesInput = document.getElementById('rmMes').value; // "YYYY-MM"
   const tipo = document.getElementById('rmTipo').value; // 'mensual' | 'parcial'
   const localidadFiltro = document.getElementById('rmLocalidad').value;
   if (!mesInput) return { alertas: [], analizados: 0 };
+
+  const claveMesMenos1 = restarMesesClave(mesInput, 1);
+  const claveMesMenos2 = restarMesesClave(mesInput, 2);
+  const claveMesMenos3 = restarMesesClave(mesInput, 3);
 
   let clientesFiltrados = cache.clientes;
   if (localidadFiltro) clientesFiltrados = clientesFiltrados.filter(c => c.localidad === localidadFiltro);
@@ -3910,51 +3923,96 @@ function calcularAlertasResumenMes() {
   let analizados = 0;
   clientesFiltrados.forEach(c => {
     const meses = cache.consumoPorClienteMes[c.id] || {};
-    const historicos = Object.entries(meses)
-      .filter(([clave, datos]) => clave < mesInput && Number(datos.total) > 0)
-      .map(([, datos]) => Number(datos.total));
-    if (!historicos.length) return; // sin historial previo, no hay con qué comparar
+    const ventasMesMenos1 = Number((meses[claveMesMenos1] || {}).total || 0);
+    const ventasMesMenos2 = Number((meses[claveMesMenos2] || {}).total || 0);
+    const ventasMesMenos3 = Number((meses[claveMesMenos3] || {}).total || 0);
+    // Promedio trimestral: solo cuentan, para el promedio, los meses de ese
+    // trimestre en los que el cliente tuvo alguna venta — mismo criterio que
+    // ya usa el resto del sistema (ver calcularConsumo).
+    const historicos = [ventasMesMenos1, ventasMesMenos2, ventasMesMenos3].filter(v => v > 0);
+    if (!historicos.length) return; // sin ventas en el trimestre anterior, no hay con qué comparar
     analizados++;
     const promedio = historicos.reduce((a, b) => a + b, 0) / historicos.length;
     const ventasMes = Number((meses[mesInput] || {}).total || 0);
     const umbral = tipo === 'parcial' ? (promedio / 2) * 0.80 : promedio * 0.80;
     if (ventasMes < umbral) {
       const caidaPct = Math.round((1 - ventasMes / promedio) * 100);
-      alertas.push({ cliente: c, promedio, ventasMes, caidaPct });
+      alertas.push({ cliente: c, ventasMesMenos2, ventasMesMenos1, ventasMes, promedio, caidaPct });
     }
   });
   alertas.sort((a, b) => b.caidaPct - a.caidaPct);
-  return { alertas, analizados };
+  return { alertas, analizados, claveMesMenos1, claveMesMenos2 };
+}
+
+function filaTotalesHtml(alertas) {
+  return `<tr class="fila-totales">
+    <td>Total</td>
+    <td>$${Math.round(sumarFilas(alertas, 'ventasMesMenos2')).toLocaleString('es-AR')}</td>
+    <td>$${Math.round(sumarFilas(alertas, 'ventasMesMenos1')).toLocaleString('es-AR')}</td>
+    <td>$${Math.round(sumarFilas(alertas, 'ventasMes')).toLocaleString('es-AR')}</td>
+    <td>$${Math.round(sumarFilas(alertas, 'promedio')).toLocaleString('es-AR')}</td>
+    <td></td>
+  </tr>`;
+}
+
+function filaClienteHtml(a) {
+  return `<tr>
+    <td>${a.cliente.razon_social}</td>
+    <td>$${Math.round(a.ventasMesMenos2).toLocaleString('es-AR')}</td>
+    <td>$${Math.round(a.ventasMesMenos1).toLocaleString('es-AR')}</td>
+    <td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td>
+    <td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td>
+    <td><span class="badge badge-red">${a.caidaPct}%</span></td>
+  </tr>`;
 }
 
 function renderResumenMes() {
-  const { alertas, analizados } = calcularAlertasResumenMes();
+  const { alertas, analizados, claveMesMenos1, claveMesMenos2 } = calcularAlertasResumenMes();
+  const mesElegido = document.getElementById('rmMes').value;
+  const nombreMesMenos1 = claveMesMenos1 ? nombreMesClave(claveMesMenos1) : '';
+  const nombreMesMenos2 = claveMesMenos2 ? nombreMesClave(claveMesMenos2) : '';
+  const nombreMesElegido = mesElegido ? nombreMesClave(mesElegido) : '';
+
   document.getElementById('rmStatAnalizados').textContent = analizados;
   document.getElementById('rmStatAlerta').textContent = alertas.length;
   document.getElementById('rmStatPorcentaje').textContent = analizados > 0 ? `${((alertas.length / analizados) * 100).toFixed(0)}%` : '0%';
-  document.getElementById('rmResumenHint').textContent = `${alertas.length} cliente(s) en alerta sobre ${analizados} analizado(s) (clientes con historial previo al mes elegido).`;
+  document.getElementById('rmStatMontoMes').textContent = `$${Math.round(sumarFilas(alertas, 'ventasMes')).toLocaleString('es-AR')}`;
+  document.getElementById('rmStatMontoPromedio').textContent = `$${Math.round(sumarFilas(alertas, 'promedio')).toLocaleString('es-AR')}`;
+  document.getElementById('rmResumenHint').textContent = `${alertas.length} cliente(s) en alerta sobre ${analizados} analizado(s) (clientes con ventas en el trimestre anterior al mes elegido).`;
 
-  document.getElementById('rmTbody').innerHTML = alertas.map(a => `
-    <tr>
-      <td>${a.cliente.localidad || '<span class="hint">Sin definir</span>'}</td>
-      <td>${a.cliente.razon_social}</td>
-      <td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td>
-      <td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td>
-      <td><span class="badge badge-red">${a.caidaPct}%</span></td>
-    </tr>
-  `).join('') || '<tr><td colspan="5" class="hint">No hay clientes en alerta con los filtros actuales.</td></tr>';
-
+  // Agrupado por Localidad — cada una con sus clientes en alerta y su propio total.
   const porLocalidad = {};
-  alertas.forEach(a => { const loc = a.cliente.localidad || 'Sin definir'; porLocalidad[loc] = (porLocalidad[loc] || 0) + 1; });
-  const localidadesOrdenadas = Object.keys(porLocalidad).sort((a, b) => porLocalidad[b] - porLocalidad[a]);
+  alertas.forEach(a => {
+    const loc = a.cliente.localidad || 'Sin definir';
+    if (!porLocalidad[loc]) porLocalidad[loc] = [];
+    porLocalidad[loc].push(a);
+  });
+  const localidadesOrdenadas = Object.keys(porLocalidad).sort((a, b) => porLocalidad[b].length - porLocalidad[a].length);
+
+  document.getElementById('rmGrupos').innerHTML = localidadesOrdenadas.map(loc => `
+    <div class="card">
+      <h3>📍 ${loc} <span class="hint">(${porLocalidad[loc].length} cliente(s) en alerta)</span></h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Cliente</th><th>${nombreMesMenos2}</th><th>${nombreMesMenos1}</th><th>${nombreMesElegido}</th><th>Promedio (trim.)</th><th>Caída</th></tr></thead>
+          <tbody>${porLocalidad[loc].map(filaClienteHtml).join('')}</tbody>
+          <tfoot>${filaTotalesHtml(porLocalidad[loc])}</tfoot>
+        </table>
+      </div>
+    </div>
+  `).join('') || '<div class="card"><p class="hint">No hay clientes en alerta con los filtros actuales.</p></div>';
+
   destruirChart('rmChartLocalidad');
   vtaChartsInstancias.rmChartLocalidad = new Chart(document.getElementById('rmChartLocalidad'), {
     type: 'bar',
-    data: { labels: localidadesOrdenadas, datasets: [{ label: 'Clientes en alerta', data: localidadesOrdenadas.map(l => porLocalidad[l]), backgroundColor: PALETA_GRAFICOS[5] }] },
+    data: { labels: localidadesOrdenadas, datasets: [{ label: 'Clientes en alerta', data: localidadesOrdenadas.map(l => porLocalidad[l].length), backgroundColor: PALETA_GRAFICOS[5] }] },
     options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
   });
 
-  rmUltimo = { mes: document.getElementById('rmMes').value, tipo: document.getElementById('rmTipo').value, localidadFiltro: document.getElementById('rmLocalidad').value, alertas, analizados };
+  rmUltimo = {
+    mes: mesElegido, tipo: document.getElementById('rmTipo').value, localidadFiltro: document.getElementById('rmLocalidad').value,
+    alertas, analizados, nombreMesMenos1, nombreMesMenos2, nombreMesElegido, porLocalidad, localidadesOrdenadas,
+  };
 }
 
 document.getElementById('btnRmChartImg').addEventListener('click', () => descargarGraficoImagen('rmChartLocalidad', 'Clientes en alerta por localidad'));
