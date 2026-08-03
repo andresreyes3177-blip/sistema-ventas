@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Diseño · Cristal Baz</title>
+<style>
+  :root {
+    --navy: #1b2c3a; --coral: #e8543c; --green: #1c7a3e; --border: #e2e6ea;
+    --card: #ffffff; --bg: #f4f6f8; --text: #142029; --hint: #6b7680;
+    /* Escala tipográfica con pasos claros (~1.25x cada salto), en vez de
+       tamaños todos apretados entre 0.82rem y 1.05rem sin jerarquía. */
+    --fs-xs: 0.8rem;   /* meta/hints: fecha, labels, texto de ayuda */
+    --fs-sm: 1rem;     /* cuerpo: inputs, descripciones, botón, links */
+    --fs-md: 1.25rem;  /* subtítulos: título de tarjeta, tarea, nombre */
+    --fs-lg: 1.6rem;   /* número destacado de los indicadores */
+    --fs-xl: 1.75rem;  /* título principal de la página */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: var(--fs-xl); margin: 6px 0 2px; color: var(--navy); }
+  header p { color: var(--hint); font-size: var(--fs-sm); margin: 0; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+  .card h2 { margin-top: 0; font-size: var(--fs-md); color: var(--navy); }
+  label { display: block; font-size: var(--fs-xs); font-weight: 600; color: var(--navy); margin-bottom: 4px; }
+  input[type=text], input[type=date], input[type=number], textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: var(--fs-sm); font-family: inherit; margin-bottom: 14px; background: #fff;
+  }
+  textarea { resize: vertical; min-height: 70px; }
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 24px 12px; text-align: center;
+    color: var(--hint); font-size: var(--fs-sm); margin-bottom: 14px; cursor: pointer; transition: 0.15s;
+  }
+  .drop-zone.drag-over { border-color: var(--coral); background: #fff4f2; color: var(--coral); }
+  .drop-zone.tiene-archivo { border-color: var(--green); background: #f0f9f2; color: var(--green); font-weight: 600; }
+  .drop-zone input[type=file] { display: none; }
+  .btn-primary {
+    width: 100%; background: var(--coral); color: #fff; border: none; border-radius: 8px;
+    padding: 13px; font-size: var(--fs-sm); font-weight: 700; cursor: pointer;
+  }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+  .btn-primary:hover:not(:disabled) { background: #d1442e; }
+  .hint { color: var(--hint); font-size: var(--fs-xs); }
+  .stat-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+  .stat-pill { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: var(--fs-xs); color: var(--hint); flex: 1; min-width: 120px; text-align: center; }
+  .stat-pill strong { display: block; font-size: var(--fs-lg); color: var(--navy); margin-top: 2px; }
+  .mensaje-ok { background: #f0f9f2; border: 1px solid #bfe3c8; color: var(--green); padding: 12px 14px; border-radius: 10px; font-size: var(--fs-sm); margin-bottom: 14px; display: none; }
+  .entrada { border-bottom: 1px solid var(--border); padding: 14px 0; }
+  .entrada:last-child { border-bottom: none; }
+  .entrada-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .entrada-nombre { font-weight: 700; color: var(--navy); font-size: var(--fs-md); }
+  .entrada-fecha { color: var(--hint); font-size: var(--fs-xs); }
+  .entrada-tarea { font-weight: 600; margin: 4px 0 2px; font-size: var(--fs-md); }
+  .entrada-desc { color: #333; font-size: var(--fs-sm); margin: 2px 0 8px; white-space: pre-wrap; }
+  .entrada-archivo img { max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid var(--border); display: block; margin-top: 6px; }
+  .entrada-archivo a { color: var(--coral); font-weight: 600; text-decoration: none; font-size: var(--fs-sm); }
+  .entrada-archivo a:hover { text-decoration: underline; }
+  .empty-hint { text-align: center; color: var(--hint); padding: 20px; font-size: var(--fs-sm); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🎨 Registro de Diseño</h1>
+    <p>Un lugar simple para anotar qué hiciste hoy y subir lo que armaste.</p>
+  </header>
+
+  <div class="card">
+    <h2>Nueva entrada</h2>
+    <div class="mensaje-ok" id="mensajeOk"></div>
+    <label>Tu nombre</label>
+    <input type="text" id="nombrePersona" placeholder="Ej: Florencia" list="nombresConocidos">
+    <datalist id="nombresConocidos"></datalist>
+
+    <label>Fecha</label>
+    <input type="date" id="fecha">
+
+    <label>¿Qué tarea hiciste?</label>
+    <input type="text" id="tarea" placeholder="Ej: Diseño de folleto Biofinity">
+
+    <label>Contanos un poco más (opcional)</label>
+    <textarea id="descripcion" placeholder="Detalle, para qué era, algo a tener en cuenta..."></textarea>
+
+    <label>Horas dedicadas (opcional)</label>
+    <input type="number" step="0.5" min="0" id="horas" placeholder="Ej: 2">
+
+    <label>Subí el archivo que hiciste (imagen, PDF, etc. — opcional)</label>
+    <div class="drop-zone" id="dropZone">
+      <span id="dropZoneTexto">📎 Arrastrá el archivo acá, o hacé clic para elegirlo</span>
+      <input type="file" id="archivoInput">
+    </div>
+
+    <button type="button" class="btn-primary" id="btnRegistrar">Registrar</button>
+  </div>
+
+  <div class="stat-pills" id="statPills"></div>
+
+  <div class="card">
+    <h2>Historial</h2>
+    <div id="feed"></div>
+    <p class="empty-hint" id="emptyHint" style="display:none;">Todavía no hay ninguna entrada cargada — ¡la primera es la tuya!</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// Mismo proyecto de Supabase que usa el Sistema de Ventas — esta tabla y este
+// bucket son propios, sin login, sin relación con clientes/ventas (ver
+// migración 28).
+const SUPABASE_URL = 'https://xttbqcxyzlnajmamvuyt.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_QSiJWjtTLzDmZ7nO_kuH2Q_ZX0de2Tw';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const hoy = new Date();
+document.getElementById('fecha').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+// Recuerda el último nombre usado en este navegador, para no tener que
+// escribirlo cada vez.
+const nombreGuardado = localStorage.getItem('registroDiseno_nombre');
+if (nombreGuardado) document.getElementById('nombrePersona').value = nombreGuardado;
+
+let archivoElegido = null;
+const dropZone = document.getElementById('dropZone');
+const archivoInput = document.getElementById('archivoInput');
+const dropZoneTexto = document.getElementById('dropZoneTexto');
+
+function marcarArchivoElegido(file) {
+  archivoElegido = file;
+  dropZone.classList.add('tiene-archivo');
+  dropZoneTexto.textContent = `✅ ${file.name}`;
+}
+dropZone.addEventListener('click', () => archivoInput.click());
+archivoInput.addEventListener('change', () => { if (archivoInput.files[0]) marcarArchivoElegido(archivoInput.files[0]); });
+['dragenter', 'dragover'].forEach(ev => dropZone.addEventListener(ev, (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
+['dragleave', 'drop'].forEach(ev => dropZone.addEventListener(ev, (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); }));
+dropZone.addEventListener('drop', (e) => { if (e.dataTransfer.files[0]) marcarArchivoElegido(e.dataTransfer.files[0]); });
+
+const MENSAJES_OK = [
+  '¡Listo! Quedó registrado 🎉',
+  '¡Buenísimo! Ya está guardado ✅',
+  '¡Cargado! Seguí así 💪',
+  '¡Perfecto! Un paso más en tu racha 🔥',
+];
+
+async function subirArchivoSiHay() {
+  if (!archivoElegido) return { url: null, nombre: null };
+  const nombreArchivo = `${Date.now()}_${archivoElegido.name}`;
+  const { error } = await sb.storage.from('diseno-archivos').upload(nombreArchivo, archivoElegido);
+  if (error) throw error;
+  const { data } = sb.storage.from('diseno-archivos').getPublicUrl(nombreArchivo);
+  return { url: data.publicUrl, nombre: archivoElegido.name };
+}
+
+document.getElementById('btnRegistrar').addEventListener('click', async () => {
+  const btn = document.getElementById('btnRegistrar');
+  const nombre = document.getElementById('nombrePersona').value.trim();
+  const fecha = document.getElementById('fecha').value;
+  const tarea = document.getElementById('tarea').value.trim();
+  if (!nombre) { alert('Escribí tu nombre.'); return; }
+  if (!fecha) { alert('Elegí la fecha.'); return; }
+  if (!tarea) { alert('Contanos qué tarea hiciste.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+  try {
+    const { url, nombre: nombreArchivo } = await subirArchivoSiHay();
+    const { error } = await sb.from('registro_diseno').insert({
+      fecha, nombre_persona: nombre, tarea,
+      descripcion: document.getElementById('descripcion').value.trim() || null,
+      horas: document.getElementById('horas').value ? Number(document.getElementById('horas').value) : null,
+      archivo_url: url, archivo_nombre: nombreArchivo,
+    });
+    if (error) throw error;
+
+    localStorage.setItem('registroDiseno_nombre', nombre);
+    document.getElementById('tarea').value = '';
+    document.getElementById('descripcion').value = '';
+    document.getElementById('horas').value = '';
+    archivoElegido = null;
+    archivoInput.value = '';
+    dropZone.classList.remove('tiene-archivo');
+    dropZoneTexto.textContent = '📎 Arrastrá el archivo acá, o hacé clic para elegirlo';
+
+    const msg = document.getElementById('mensajeOk');
+    msg.textContent = MENSAJES_OK[Math.floor(Math.random() * MENSAJES_OK.length)];
+    msg.style.display = 'block';
+    setTimeout(() => { msg.style.display = 'none'; }, 4000);
+
+    await refrescarFeed();
+  } catch (e) {
+    alert('Hubo un problema al guardar: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Registrar';
+  }
+});
+
+function esImagen(nombreArchivo) {
+  return /\.(png|jpe?g|gif|webp|svg)$/i.test(nombreArchivo || '');
+}
+
+function calcularRacha(entradas, nombre) {
+  const fechasPropias = new Set(entradas.filter(e => e.nombre_persona === nombre).map(e => e.fecha));
+  let racha = 0;
+  let cursor = new Date();
+  while (true) {
+    const clave = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+    if (fechasPropias.has(clave)) { racha++; cursor.setDate(cursor.getDate() - 1); }
+    else break;
+  }
+  return racha;
+}
+
+async function refrescarFeed() {
+  const { data, error } = await sb.from('registro_diseno').select('*').order('creado_en', { ascending: false }).limit(200);
+  if (error) { console.error(error); return; }
+  const entradas = data || [];
+
+  const nombres = [...new Set(entradas.map(e => e.nombre_persona))].sort();
+  document.getElementById('nombresConocidos').innerHTML = nombres.map(n => `<option value="${n}">`).join('');
+
+  const nombreActual = document.getElementById('nombrePersona').value.trim() || nombres[0] || '';
+  const racha = nombreActual ? calcularRacha(entradas, nombreActual) : 0;
+  const inicioSemana = new Date();
+  inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
+  const claveInicioSemana = `${inicioSemana.getFullYear()}-${String(inicioSemana.getMonth() + 1).padStart(2, '0')}-${String(inicioSemana.getDate()).padStart(2, '0')}`;
+  const cargadasEstaSemana = entradas.filter(e => e.nombre_persona === nombreActual && e.fecha >= claveInicioSemana).length;
+
+  document.getElementById('statPills').innerHTML = `
+    <div class="stat-pill">Racha de días seguidos<strong>${racha > 0 ? '🔥 ' + racha : '—'}</strong></div>
+    <div class="stat-pill">Entradas esta semana<strong>${cargadasEstaSemana}</strong></div>
+    <div class="stat-pill">Total registradas<strong>${entradas.length}</strong></div>
+  `;
+
+  document.getElementById('emptyHint').style.display = entradas.length ? 'none' : 'block';
+  document.getElementById('feed').innerHTML = entradas.map(e => {
+    const fechaFmt = (e.fecha || '').split('-').reverse().join('/');
+    const archivoHtml = e.archivo_url
+      ? (esImagen(e.archivo_nombre)
+        ? `<div class="entrada-archivo"><a href="${e.archivo_url}" target="_blank"><img src="${e.archivo_url}" alt="${e.archivo_nombre}"></a></div>`
+        : `<div class="entrada-archivo"><a href="${e.archivo_url}" target="_blank">📎 ${e.archivo_nombre}</a></div>`)
+      : '';
+    return `
+      <div class="entrada">
+        <div class="entrada-top">
+          <span class="entrada-nombre">${e.nombre_persona}</span>
+          <span class="entrada-fecha">${fechaFmt}${e.horas ? ' · ' + e.horas + 'hs' : ''}</span>
+        </div>
+        <div class="entrada-tarea">${e.tarea}</div>
+        ${e.descripcion ? `<div class="entrada-desc">${e.descripcion}</div>` : ''}
+        ${archivoHtml}
+      </div>`;
+  }).join('');
+}
+
+document.getElementById('nombrePersona').addEventListener('change', refrescarFeed);
+refrescarFeed();
+</script>
+</body>
+</html>
