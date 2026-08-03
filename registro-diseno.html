@@ -252,10 +252,24 @@ function calcularRacha(entradas, nombre) {
   return racha;
 }
 
+function claveMesDeFecha(fecha) { return (fecha || '').toString().slice(0, 7); }
+
+function poblarFiltroMes(entradas) {
+  const claves = [...new Set(entradas.map(e => claveMesDeFecha(e.fecha)).filter(Boolean))].sort().reverse();
+  const selectMes = document.getElementById('filtroMes');
+  const actual = selectMes.value;
+  selectMes.innerHTML = '<option value="">Todos los meses</option>' + claves.map(c => `<option value="${c}">${nombreMesClave(c)}</option>`).join('');
+  const hoyClave = claveMesDeFecha(document.getElementById('fecha').value);
+  if (actual && claves.includes(actual)) selectMes.value = actual;
+  else if (claves.includes(hoyClave)) selectMes.value = hoyClave;
+  else if (claves.length) selectMes.value = claves[0];
+}
+
 async function refrescarFeed() {
-  const { data, error } = await sb.from('registro_diseno').select('*').order('creado_en', { ascending: false }).limit(200);
+  const { data, error } = await sb.from('registro_diseno').select('*').order('creado_en', { ascending: false }).limit(500);
   if (error) { console.error(error); return; }
-  const entradas = data || [];
+  entradasCache = data || [];
+  const entradas = entradasCache;
 
   const nombres = [...new Set(entradas.map(e => e.nombre_persona))].sort();
   document.getElementById('nombresConocidos').innerHTML = nombres.map(n => `<option value="${n}">`).join('');
@@ -273,9 +287,18 @@ async function refrescarFeed() {
     <div class="stat-pill">Total registradas<strong>${entradas.length}</strong></div>
   `;
 
+  poblarFiltroMes(entradas);
+  renderFeedFiltrado();
+}
+
+function renderFeedFiltrado() {
+  const mesFiltro = document.getElementById('filtroMes').value;
+  const entradas = mesFiltro ? entradasCache.filter(e => claveMesDeFecha(e.fecha) === mesFiltro) : entradasCache;
+
   document.getElementById('emptyHint').style.display = entradas.length ? 'none' : 'block';
   document.getElementById('feed').innerHTML = entradas.map(e => {
     const fechaFmt = (e.fecha || '').split('-').reverse().join('/');
+    const estadoBadge = `<span class="estado-badge ${e.estado || 'terminado'}">${ESTADO_LABEL[e.estado] || ESTADO_LABEL.terminado}</span>`;
     const archivoHtml = e.archivo_url
       ? (esImagen(e.archivo_nombre)
         ? `<div class="entrada-archivo"><a href="${e.archivo_url}" target="_blank"><img src="${e.archivo_url}" alt="${e.archivo_nombre}"></a></div>`
@@ -284,7 +307,7 @@ async function refrescarFeed() {
     return `
       <div class="entrada">
         <div class="entrada-top">
-          <span class="entrada-nombre">${e.nombre_persona}</span>
+          <span class="entrada-nombre">${e.nombre_persona}${estadoBadge}</span>
           <span class="entrada-fecha">${fechaFmt}${e.horas ? ' · ' + e.horas + 'hs' : ''}</span>
         </div>
         <div class="entrada-tarea">${e.tarea}</div>
@@ -293,6 +316,27 @@ async function refrescarFeed() {
       </div>`;
   }).join('');
 }
+
+document.getElementById('filtroMes').addEventListener('change', renderFeedFiltrado);
+
+document.getElementById('btnDescargarExcel').addEventListener('click', () => {
+  const mesFiltro = document.getElementById('filtroMes').value;
+  const entradas = mesFiltro ? entradasCache.filter(e => claveMesDeFecha(e.fecha) === mesFiltro) : entradasCache;
+  if (!entradas.length) { alert('No hay entradas para descargar en ese mes.'); return; }
+  const filas = entradas.slice().reverse().map(e => ({
+    'Fecha': (e.fecha || '').split('-').reverse().join('/'),
+    'Nombre': e.nombre_persona,
+    'Tarea': e.tarea,
+    'Descripción': e.descripcion || '',
+    'Horas': e.horas || '',
+    'Estado': e.estado === 'en_progreso' ? 'En progreso' : 'Terminado',
+    'Archivo': e.archivo_url || '',
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), 'Registro de Diseño');
+  const nombreMes = mesFiltro ? nombreMesClave(mesFiltro) : 'Todos los meses';
+  XLSX.writeFile(wb, `Registro de Diseño - ${nombreMes}.xlsx`);
+});
 
 document.getElementById('nombrePersona').addEventListener('change', refrescarFeed);
 refrescarFeed();
