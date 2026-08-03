@@ -4048,6 +4048,12 @@ function renderResumenMes() {
   document.getElementById('rmStatMontoPromedio').textContent = `$${Math.round(totalPromedio).toLocaleString('es-AR')}`;
   document.getElementById('rmStatPctPromedio').textContent = formatoArribaAbajo(pctVsPromedioGeneral);
   document.getElementById('rmStatPctAnual').textContent = formatoArribaAbajo(acumuladoAnual.pctAcumuladoVsAnioAnterior);
+  const pillAnual = document.getElementById('rmStatPctAnual').closest('.stat-pill');
+  if (pillAnual) {
+    pillAnual.title = mesElegido
+      ? `Promedio de este año calculado sobre ${acumuladoAnual.mesesConVentaAnioActual} mes(es) con ventas cargadas (de ${mesElegido.split('-')[1]} transcurridos). Promedio del año anterior calculado sobre ${acumuladoAnual.mesesConVentaAnioAnterior} de 12 meses. Si alguno de los dos números es muy bajo, el porcentaje no es confiable todavía.`
+      : '';
+  }
   document.getElementById('rmResumenHint').textContent = `${alertas.length} cliente(s) en alerta sobre ${analizadosList.length} analizado(s) (clientes con ventas en el trimestre base).`;
 
   // Agrupado por Localidad — cada una con sus clientes en alerta y su propio total.
