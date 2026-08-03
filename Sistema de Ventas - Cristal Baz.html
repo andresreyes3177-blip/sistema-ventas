@@ -4781,6 +4781,11 @@ function imprimirHtml(titulo, cuerpoHtml) {
   if (!ventana) { alert('El navegador bloqueó la ventana de impresión — permití los pop-ups para este sitio e intentá de nuevo.'); return; }
   ventana.document.write(`<!DOCTYPE html><html><head><title>${titulo}</title><meta charset="utf-8">
     <style>
+      /* Sin esto, la mayoría de los navegadores se saltean los fondos de
+         color al imprimir/guardar PDF (para "ahorrar tinta") — acá los
+         necesitamos sí o sí (ej: filas resaltadas en negro para que se
+         noten en una impresora blanco y negro). */
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
       body { font-family: Arial, Helvetica, sans-serif; padding: 24px; color: #142029; }
       h1 { font-size: 1.15rem; margin-bottom: 4px; }
       h2 { font-size: 0.95rem; margin-top: 24px; }
