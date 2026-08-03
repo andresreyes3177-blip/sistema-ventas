@@ -4127,7 +4127,8 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
     <p>Mes analizado: <strong>${nombreMesClave(d.mes)}</strong> — Tipo: <strong>${nombreTipo}</strong>${d.localidadFiltro ? ' — Localidad: <strong>' + d.localidadFiltro + '</strong>' : ''}</p>
     <p>Promedio trimestral base: <strong>${d.nombreBase1}, ${d.nombreBase2} y ${d.nombreBase3}</strong></p>
     <p>Clientes analizados: <strong>${d.analizadosList.length}</strong> — Clientes en alerta: <strong>${d.alertas.length}</strong> (${d.analizadosList.length > 0 ? ((d.alertas.length / d.analizadosList.length) * 100).toFixed(0) : 0}%)</p>
-    <p>Total ventas de ${d.nombreMesElegido}: <strong>$${Math.round(d.totalVentasMes).toLocaleString('es-AR')}</strong> — Total promedio trimestral: <strong>$${Math.round(d.totalPromedio).toLocaleString('es-AR')}</strong> — % vs. promedio (general): <strong>${d.pctVsPromedioGeneral === null ? '—' : d.pctVsPromedioGeneral + '%'}</strong></p>
+    <p>Total ventas de ${d.nombreMesElegido}: <strong>$${Math.round(d.totalVentasMes).toLocaleString('es-AR')}</strong> — Total promedio trimestral: <strong>$${Math.round(d.totalPromedio).toLocaleString('es-AR')}</strong> — % vs. promedio (general): <strong>${formatoArribaAbajo(d.pctVsPromedioGeneral)}</strong></p>
+    <p>Acumulado del año vs. promedio del año anterior: <strong>${formatoArribaAbajo(d.acumuladoAnual.pctAcumuladoVsAnioAnterior)}</strong></p>
     <img src="${vtaChartsInstancias.rmChartLocalidad.toBase64Image()}" style="max-width:100%;">
     ${d.localidadesOrdenadas.map(loc => `
       <h2>📍 ${loc} (${d.porLocalidad[loc].length} cliente(s) en alerta)</h2>
