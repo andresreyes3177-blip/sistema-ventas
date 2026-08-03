@@ -4142,46 +4142,67 @@ function grupoActivoRm() {
 
 document.getElementById('btnRmChartImg').addEventListener('click', () => descargarGraficoImagen('rmChartLocalidad', 'Clientes en alerta por localidad'));
 
-document.getElementById('btnRmExcel').addEventListener('click', () => {
+// Descarga el Resumen de Mes como Excel CON FORMATO (colores, negrita,
+// bordes) usando ExcelJS — a diferencia del resto de los Excel del sistema
+// (con SheetJS, que es gratis pero no permite escribir estilos), esto imita
+// el resaltado en rojo que ya usaban en el Excel de referencia para marcar
+// caídas.
+document.getElementById('btnRmExcel').addEventListener('click', async () => {
   if (!rmUltimo) { alert('Elegí un mes para analizar primero.'); return; }
   const g = grupoActivoRm();
   if (!g.lista.length) { alert(`No hay clientes (${g.etiqueta}) para exportar con los filtros actuales.`); return; }
   const d = rmUltimo;
-  const filasExcel = [];
-  filasExcel.push({
-    'Localidad': 'TOTAL GENERAL', 'Cliente': `${g.lista.length} cliente(s) — ${g.etiqueta}`,
-    [d.nombreBase1]: '', [d.nombreBase2]: '', [d.nombreBase3]: '',
-    'Promedio (trimestral)': Math.round(sumarFilas(g.lista, 'promedio')), [d.nombreMesElegido]: Math.round(sumarFilas(g.lista, 'ventasMes')),
-    'Caída %': '',
-  });
+
+  const encabezados = ['Cliente', d.nombreBase1, d.nombreBase2, d.nombreBase3, 'Promedio (trimestral)', d.nombreMesElegido, 'vs. Promedio'];
+  const ROJO_ALERTA = 'FFFF0000';
+  const GRIS_ENCABEZADO = 'FF1B2C3A';
+  const GRIS_CLARO = 'FFF2F2F2';
+  const BORDE_FINA = { style: 'thin', color: { argb: 'FFCCCCCC' } };
+  const bordeCompleto = { top: BORDE_FINA, left: BORDE_FINA, bottom: BORDE_FINA, right: BORDE_FINA };
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Resumen de Mes');
+  ws.columns = [{ width: 34 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 }, { width: 16 }, { width: 16 }];
+
+  const filaTitulo = ws.addRow([`${d.tipo === 'parcial' ? 'Análisis parcial del mes' : 'Informe mensual de ventas'} — ${d.nombreMesElegido} — ${g.etiqueta}`]);
+  filaTitulo.font = { bold: true, size: 13 };
+  ws.mergeCells(filaTitulo.number, 1, filaTitulo.number, 7);
+  const filaSub = ws.addRow([`Promedio trimestral base: ${d.nombreBase1}, ${d.nombreBase2} y ${d.nombreBase3}`]);
+  filaSub.font = { italic: true, color: { argb: 'FF666666' } };
+  ws.mergeCells(filaSub.number, 1, filaSub.number, 7);
+  ws.addRow([]);
+
   g.localidadesOrdenadas.forEach(loc => {
+    const filaLoc = ws.addRow([`📍 ${loc} (${g.porLocalidad[loc].length} cliente(s))`]);
+    ws.mergeCells(filaLoc.number, 1, filaLoc.number, 7);
+    filaLoc.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GRIS_ENCABEZADO } }; });
+
+    const filaHead = ws.addRow(encabezados);
+    filaHead.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GRIS_CLARO } }; c.border = bordeCompleto; });
+
     g.porLocalidad[loc].forEach(a => {
-      filasExcel.push({
-        'Localidad': loc,
-        'Cliente': a.cliente.razon_social,
-        [d.nombreBase1]: Math.round(a.v1),
-        [d.nombreBase2]: Math.round(a.v2),
-        [d.nombreBase3]: Math.round(a.v3),
-        'Promedio (trimestral)': Math.round(a.promedio),
-        [d.nombreMesElegido]: Math.round(a.ventasMes),
-        'Caída %': a.caidaPct,
+      const textoVsPromedio = a.caidaPct >= 0 ? `${a.caidaPct}% abajo` : `${Math.abs(a.caidaPct)}% arriba`;
+      const fila = ws.addRow([a.cliente.razon_social, Math.round(a.v1), Math.round(a.v2), Math.round(a.v3), Math.round(a.promedio), Math.round(a.ventasMes), textoVsPromedio]);
+      fila.eachCell(c => {
+        c.border = bordeCompleto;
+        if (a.enAlerta) { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ROJO_ALERTA } }; }
       });
     });
-    filasExcel.push({
-      'Localidad': `Total ${loc}`, 'Cliente': '',
-      [d.nombreBase1]: Math.round(sumarFilas(g.porLocalidad[loc], 'v1')),
-      [d.nombreBase2]: Math.round(sumarFilas(g.porLocalidad[loc], 'v2')),
-      [d.nombreBase3]: Math.round(sumarFilas(g.porLocalidad[loc], 'v3')),
-      'Promedio (trimestral)': Math.round(sumarFilas(g.porLocalidad[loc], 'promedio')),
-      [d.nombreMesElegido]: Math.round(sumarFilas(g.porLocalidad[loc], 'ventasMes')),
-      'Caída %': '',
-    });
+
+    const filaTotal = ws.addRow(['Total', Math.round(sumarFilas(g.porLocalidad[loc], 'v1')), Math.round(sumarFilas(g.porLocalidad[loc], 'v2')), Math.round(sumarFilas(g.porLocalidad[loc], 'v3')), Math.round(sumarFilas(g.porLocalidad[loc], 'promedio')), Math.round(sumarFilas(g.porLocalidad[loc], 'ventasMes')), '']);
+    filaTotal.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GRIS_CLARO } }; c.border = bordeCompleto; });
+    ws.addRow([]);
   });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasExcel), 'Resumen de Mes');
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const nombreTipo = d.tipo === 'parcial' ? 'Analisis parcial' : 'Informe mensual';
   const sufijoVista = g.esTodos ? 'todos' : 'alerta';
-  XLSX.writeFile(wb, `${nombreTipo} - ${d.mes} - ${sufijoVista} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${nombreTipo} - ${d.mes} - ${sufijoVista} - ${new Date().toISOString().slice(0, 10)}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(a.href);
 });
 
 document.getElementById('btnRmImprimir').addEventListener('click', () => {
