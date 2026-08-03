@@ -3983,16 +3983,24 @@ function calcularAcumuladoAnual(clientesFiltrados, mesInput) {
   const [anioElegido, mesNum] = mesInput.split('-').map(Number); // mesNum: 1-12
   const anioAnterior = anioElegido - 1;
 
-  let sumaAnioAnterior = 0;
-  for (let m = 1; m <= 12; m++) sumaAnioAnterior += totalMensualAgregado(clientesFiltrados, claveMes(anioAnterior, m - 1));
-  const promedioAnioAnteriorCompleto = sumaAnioAnterior / 12;
+  // Igual que en el resto del sistema: solo cuentan, para el promedio, los
+  // meses que realmente tienen ventas cargadas — si en el sistema no está
+  // cargado el año anterior completo, dividir por 12 igual infla el
+  // promedio hacia abajo y rompe el porcentaje (por eso daba disparatado).
+  const totalesAnioAnterior = [];
+  for (let m = 1; m <= 12; m++) totalesAnioAnterior.push(totalMensualAgregado(clientesFiltrados, claveMes(anioAnterior, m - 1)));
+  const mesesConVentaAnioAnterior = totalesAnioAnterior.filter(v => v > 0);
+  const promedioAnioAnteriorCompleto = mesesConVentaAnioAnterior.length
+    ? mesesConVentaAnioAnterior.reduce((a, b) => a + b, 0) / mesesConVentaAnioAnterior.length : 0;
 
-  let sumaAnioActual = 0;
-  for (let m = 1; m <= mesNum; m++) sumaAnioActual += totalMensualAgregado(clientesFiltrados, claveMes(anioElegido, m - 1));
-  const promedioAnioActualAcumulado = sumaAnioActual / mesNum;
+  const totalesAnioActual = [];
+  for (let m = 1; m <= mesNum; m++) totalesAnioActual.push(totalMensualAgregado(clientesFiltrados, claveMes(anioElegido, m - 1)));
+  const mesesConVentaAnioActual = totalesAnioActual.filter(v => v > 0);
+  const promedioAnioActualAcumulado = mesesConVentaAnioActual.length
+    ? mesesConVentaAnioActual.reduce((a, b) => a + b, 0) / mesesConVentaAnioActual.length : 0;
 
   const pctAcumuladoVsAnioAnterior = promedioAnioAnteriorCompleto > 0 ? Math.round((promedioAnioActualAcumulado / promedioAnioAnteriorCompleto) * 100) : null;
-  return { promedioAnioAnteriorCompleto, promedioAnioActualAcumulado, pctAcumuladoVsAnioAnterior };
+  return { promedioAnioAnteriorCompleto, promedioAnioActualAcumulado, pctAcumuladoVsAnioAnterior, mesesConVentaAnioAnterior: mesesConVentaAnioAnterior.length, mesesConVentaAnioActual: mesesConVentaAnioActual.length };
 }
 
 function filaTotalesHtml(lista) {
