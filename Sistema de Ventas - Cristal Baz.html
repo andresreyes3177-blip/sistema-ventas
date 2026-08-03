@@ -4819,6 +4819,11 @@ function imprimirHtml(titulo, cuerpoHtml) {
       th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; font-size: 0.82rem; }
       th { background: #f2f2f2; }
       .fecha-generado { color: #777; font-size: 0.78rem; margin-bottom: 16px; }
+      /* Evita que al imprimir/guardar PDF se corte un bloque (ej: una
+         Localidad con su tabla) justo entre dos hojas — si no entra
+         completo en la hoja actual, el navegador lo pasa entero a la
+         siguiente en vez de partirlo por la mitad. */
+      .bloque-localidad { break-inside: avoid; page-break-inside: avoid; }
     </style>
     </head><body>
       <h1>${titulo}</h1>
