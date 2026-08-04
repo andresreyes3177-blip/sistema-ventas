@@ -2818,7 +2818,7 @@ document.getElementById('btnMigrarLogistica').addEventListener('click', async ()
 // Reconoce columnas por nombre de encabezado (igual que los otros importadores):
 // Razón Social (obligatoria), Localidad, Email, Teléfono, CUIT, Domicilio, Zona.
 function detectarColumnasClientes(headers) {
-  const norm = headers.map(normalizarHeader);
+  const norm = Array.from(headers, normalizarHeader); // Array.from (no .map) para que las celdas de encabezado vacías no queden como huecos "undefined" en el array — Array.prototype.map se los saltea, y después un find/findIndex sí los visita y explota con "Cannot read properties of undefined".
   const find = (mustInclude, mustExclude) => {
     for (let i = 0; i < norm.length; i++) {
       const h = norm[i];
@@ -3504,7 +3504,7 @@ function normalizarHeader(h) {
 }
 
 function detectarColumnas(headers) {
-  const norm = headers.map(normalizarHeader);
+  const norm = Array.from(headers, normalizarHeader); // Array.from (no .map) para que las celdas de encabezado vacías no queden como huecos "undefined" en el array — Array.prototype.map se los saltea, y después un find/findIndex sí los visita y explota con "Cannot read properties of undefined".
   const find = (mustInclude, mustExclude) => {
     let idx = norm.findIndex(h => mustInclude.every(m => h.includes(m)) && (!mustExclude || !mustExclude.some(x => h.includes(x))));
     return idx;
