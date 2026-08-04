@@ -3679,6 +3679,21 @@ function renderArticulosFiltrados() {
   });
 }
 
+document.getElementById('btnDescargarCatalogoExcel').addEventListener('click', () => {
+  const verCostos = puedeVerRentabilidad();
+  const filas = cache.articulos.map(a => {
+    const costo = cache.costosPorArticulo[a.id] || {};
+    const fila = {
+      'Código': a.codigo_erp, 'Artículo': a.nombre, 'Grupo': a.grupo, 'Rubro': a.rubro, 'Subrubro': a.subrubro || '',
+    };
+    if (verCostos) { fila['Costo USD'] = costo.costo_usd ?? ''; fila['Costo ARS'] = costo.costo_ars ?? ''; }
+    return fila;
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), 'Catálogo');
+  XLSX.writeFile(wb, `Catalogo de articulos - ${new Date().toISOString().slice(0, 10)}.xlsx`);
+});
+
 async function refreshArticulos() {
   cache.articulos = await DB.listArticulos();
   renderArticulosFiltrados();
