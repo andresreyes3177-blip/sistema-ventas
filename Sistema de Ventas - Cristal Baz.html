@@ -3714,7 +3714,7 @@ document.getElementById('fileCostos').addEventListener('change', (e) => {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false });
       if (!rows.length) { alert('El archivo está vacío.'); return; }
-      const headers = rows[0].map(normalizarHeader);
+      const headers = Array.from(rows[0], normalizarHeader); // Array.from, no .map — ver comentario en detectarColumnas
       const idx = (nombre) => headers.findIndex(h => h.includes(nombre));
       const cCodigo = idx('codigo');
       const cArticulo = idx('articulo');
