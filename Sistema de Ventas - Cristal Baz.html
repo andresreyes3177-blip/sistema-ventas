@@ -4243,6 +4243,12 @@ document.getElementById('btnRmExcel').addEventListener('click', async () => {
     filaHead.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GRIS_CLARO } }; c.border = bordeCompleto; });
 
     g.porLocalidad[loc].forEach(a => {
+      const NUEVO_AZUL = 'FFDCEBF7';
+      if (a.esNuevo) {
+        const fila = ws.addRow([`🆕 ${a.cliente.razon_social}`, '—', '—', '—', '—', Math.round(a.ventasMes), 'Sin promedio (nuevo)']);
+        fila.eachCell(c => { c.border = bordeCompleto; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NUEVO_AZUL } }; });
+        return;
+      }
       const textoVsPromedio = a.caidaPct >= 0 ? `${a.caidaPct}% abajo` : `${Math.abs(a.caidaPct)}% arriba`;
       const fila = ws.addRow([a.cliente.razon_social, Math.round(a.v1), Math.round(a.v2), Math.round(a.v3), Math.round(a.promedio), Math.round(a.ventasMes), textoVsPromedio]);
       fila.eachCell(c => {
