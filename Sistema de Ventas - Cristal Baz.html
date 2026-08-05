@@ -1525,6 +1525,7 @@
       <p class="hint" id="rmTrimestreHint"></p>
       <div class="stat-pills">
         <div class="stat-pill">Clientes analizados<strong id="rmStatAnalizados">0</strong></div>
+        <div class="stat-pill">Clientes nuevos (sin promedio)<strong id="rmStatNuevos">0</strong></div>
         <div class="stat-pill">Clientes en alerta<strong id="rmStatAlerta">0</strong></div>
         <div class="stat-pill">% en alerta<strong id="rmStatPorcentaje">0%</strong></div>
         <div class="stat-pill">Total ventas del mes<strong id="rmStatMontoMes">$0</strong></div>
@@ -4105,12 +4106,17 @@ function filaClienteHtml(a) {
 }
 
 function renderResumenMes() {
-  const { alertas, analizadosList, baseMeses, clientesFiltrados } = calcularAlertasResumenMes();
+  const { alertas, analizadosList, clientesNuevos, baseMeses, clientesFiltrados, totalVentasTodos } = calcularAlertasResumenMes();
   const mesElegido = document.getElementById('rmMes').value;
   const [nombreBase1, nombreBase2, nombreBase3] = baseMeses.map(m => m ? nombreMesClave(m) : '');
   const nombreMesElegido = mesElegido ? nombreMesClave(mesElegido) : '';
 
-  const totalVentasMes = sumarFilas(analizadosList, 'ventasMes');
+  // "Total ventas del mes" es el consumo REAL del mes (todos los clientes,
+  // tengan o no promedio) — así coincide con el total que ya se ve en el
+  // Dashboard. El promedio, en cambio, solo puede salir de los clientes que
+  // sí tienen trimestre base (no se le puede sacar promedio a alguien sin
+  // historial ahí).
+  const totalVentasMes = totalVentasTodos;
   const totalPromedio = sumarFilas(analizadosList, 'promedio');
   const pctVsPromedioGeneral = totalPromedio > 0 ? Math.round((totalVentasMes / totalPromedio) * 100) : null;
   const acumuladoAnual = mesElegido ? calcularAcumuladoAnual(clientesFiltrados, mesElegido) : { pctAcumuladoVsAnioAnterior: null };
@@ -4119,6 +4125,7 @@ function renderResumenMes() {
     ? `Promedio trimestral base: ${nombreBase1}, ${nombreBase2} y ${nombreBase3} — se evalúa contra ${nombreMesElegido}. Este mismo trimestre base se usa fijo para los 3 meses del trimestre siguiente.`
     : '';
   document.getElementById('rmStatAnalizados').textContent = analizadosList.length;
+  document.getElementById('rmStatNuevos').textContent = clientesNuevos.length;
   document.getElementById('rmStatAlerta').textContent = alertas.length;
   document.getElementById('rmStatPorcentaje').textContent = analizadosList.length > 0 ? `${((alertas.length / analizadosList.length) * 100).toFixed(0)}%` : '0%';
   document.getElementById('rmStatMontoMes').textContent = `$${Math.round(totalVentasMes).toLocaleString('es-AR')}`;
@@ -4131,7 +4138,7 @@ function renderResumenMes() {
       ? `Promedio de este año calculado sobre ${acumuladoAnual.mesesConVentaAnioActual} mes(es) con ventas cargadas (de ${mesElegido.split('-')[1]} transcurridos). Promedio del año anterior calculado sobre ${acumuladoAnual.mesesConVentaAnioAnterior} de 12 meses. Si alguno de los dos números es muy bajo, el porcentaje no es confiable todavía.`
       : '';
   }
-  document.getElementById('rmResumenHint').textContent = `${alertas.length} cliente(s) en alerta sobre ${analizadosList.length} analizado(s) (clientes con ventas en el trimestre base).`;
+  document.getElementById('rmResumenHint').textContent = `${alertas.length} cliente(s) en alerta sobre ${analizadosList.length} analizado(s) (clientes con ventas en el trimestre base) — ${clientesNuevos.length} cliente(s) más sin promedio (marcados 🆕) también suman al total del mes.`;
 
   // Agrupa una lista de clientes por Localidad y arma las tarjetas con tabla
   // + total — se usa dos veces: una para "Todos los clientes" (analizadosList)
@@ -4162,7 +4169,7 @@ function renderResumenMes() {
     `).join('') || `<div class="card"><p class="hint">No hay clientes${etiqueta} con los filtros actuales.</p></div>`;
   }
 
-  const porLocalidadTodos = agruparPorLocalidad(analizadosList);
+  const porLocalidadTodos = agruparPorLocalidad([...analizadosList, ...clientesNuevos]);
   const localidadesOrdenadasTodos = Object.keys(porLocalidadTodos).sort((a, b) => porLocalidadTodos[b].length - porLocalidadTodos[a].length);
   const porLocalidad = agruparPorLocalidad(alertas); // se usa también para el gráfico
   const localidadesOrdenadas = Object.keys(porLocalidad).sort((a, b) => porLocalidad[b].length - porLocalidad[a].length);
