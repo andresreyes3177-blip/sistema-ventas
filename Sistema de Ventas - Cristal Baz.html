@@ -4379,6 +4379,20 @@ document.getElementById('btnRentArticuloCalcular').addEventListener('click', asy
   finally { btn.disabled = false; btn.textContent = 'Calcular'; }
 });
 
+document.getElementById('btnRentDescargarSinCosto').addEventListener('click', () => {
+  if (!rentArticuloSinCostoUltimo || !rentArticuloSinCostoUltimo.length) { alert('No hay artículos sin costo para descargar.'); return; }
+  const desde = document.getElementById('rentArticuloDesde').value;
+  const hasta = document.getElementById('rentArticuloHasta').value;
+  const filasExcel = rentArticuloSinCostoUltimo.map(f => ({
+    'Código': f.articulo.codigo_erp, 'Artículo': f.articulo.nombre, 'Grupo': f.articulo.grupo, 'Rubro': f.articulo.rubro, 'Subrubro': f.articulo.subrubro || '',
+    'Cantidad vendida': f.cantidad, 'Facturado': Math.round(f.facturado),
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasExcel), 'Sin costo');
+  const rango = (desde || hasta) ? ` ${desde || '...'} a ${hasta || '...'}` : '';
+  XLSX.writeFile(wb, `Articulos sin costo -${rango} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
+});
+
 document.getElementById('btnRentClienteCalcular').addEventListener('click', async () => {
   const btn = document.getElementById('btnRentClienteCalcular');
   btn.disabled = true;
