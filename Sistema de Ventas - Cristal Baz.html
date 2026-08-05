@@ -4198,7 +4198,7 @@ function grupoActivoRm() {
   const btnActivo = document.querySelector('[data-subtab-rm].is-active');
   const esTodos = !btnActivo || btnActivo.dataset.subtabRm === 'todos';
   return esTodos
-    ? { lista: rmUltimo.analizadosList, porLocalidad: rmUltimo.porLocalidadTodos, localidadesOrdenadas: rmUltimo.localidadesOrdenadasTodos, etiqueta: 'Todos los clientes', esTodos: true }
+    ? { lista: [...rmUltimo.analizadosList, ...rmUltimo.clientesNuevos], porLocalidad: rmUltimo.porLocalidadTodos, localidadesOrdenadas: rmUltimo.localidadesOrdenadasTodos, etiqueta: 'Todos los clientes', esTodos: true }
     : { lista: rmUltimo.alertas, porLocalidad: rmUltimo.porLocalidad, localidadesOrdenadas: rmUltimo.localidadesOrdenadas, etiqueta: 'Solo en alerta', esTodos: false };
 }
 
