@@ -5474,10 +5474,10 @@ async function refreshEquipo() {
 
   document.getElementById('usuariosTbody').innerHTML = cache.profiles.map(p => {
     if (p.protegido) {
-      return `<tr><td>${p.nombre || '—'}</td><td><span class="badge badge-coral">admin · protegido</span></td><td>Ve todas (Administrador)</td><td class="lock-note">🔒 Nadie puede modificar esta cuenta</td></tr>`;
+      return `<tr><td>${p.nombre || '—'}</td><td><span class="badge badge-coral">admin · protegido</span></td><td>Ve todas (Administrador)</td><td>Sí (protegido)</td><td class="lock-note">🔒 Nadie puede modificar esta cuenta</td></tr>`;
     }
     if (!soyAdmin) {
-      return `<tr><td>${p.nombre || '—'}</td><td>${p.role}</td><td>${p.role === 'admin' ? 'Ve todas (Administrador)' : nombresSucursalesDeProfile(p.id)}</td><td></td></tr>`;
+      return `<tr><td>${p.nombre || '—'}</td><td>${p.role}</td><td>${p.role === 'admin' ? 'Ve todas (Administrador)' : nombresSucursalesDeProfile(p.id)}</td><td>${p.ve_rentabilidad ? 'Sí' : 'No'}</td><td></td></tr>`;
     }
     const celdaSucursales = p.role === 'admin'
       ? 'Ve todas (Administrador)'
@@ -5487,6 +5487,7 @@ async function refreshEquipo() {
       <td>${p.nombre || '—'}</td>
       <td><select data-rol-usuario="${p.id}">${opcionesRol(p.role)}</select></td>
       <td>${celdaSucursales}</td>
+      <td><label><input type="checkbox" data-rent-usuario="${p.id}" ${p.ve_rentabilidad ? 'checked' : ''}> Autorizado</label></td>
       <td></td>
     </tr>`;
   }).join('');
