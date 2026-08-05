@@ -3989,7 +3989,17 @@ function calcularAlertasResumenMes() {
   });
 
   const alertas = analizadosList.filter(a => a.enAlerta).sort((a, b) => b.caidaPct - a.caidaPct);
-  return { alertas, analizadosList, baseMeses, clientesFiltrados };
+
+  // Total real del mes: TODOS los clientes filtrados, no solo los que tienen
+  // promedio trimestral — si no, un cliente nuevo (o que volvió después de
+  // no comprar en el trimestre base) queda afuera de la suma, y el total no
+  // coincide con el consumo real del mes que ya se ve en el Dashboard.
+  const totalVentasTodos = clientesFiltrados.reduce((s, c) => {
+    const meses = cache.consumoPorClienteMes[c.id] || {};
+    return s + Number((meses[mesInput] || {}).total || 0);
+  }, 0);
+
+  return { alertas, analizadosList, baseMeses, clientesFiltrados, totalVentasTodos };
 }
 
 // Formatea un porcentaje respecto a 100 como "X% arriba" / "X% abajo" — más
