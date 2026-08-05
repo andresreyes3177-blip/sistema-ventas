@@ -4466,9 +4466,9 @@ document.getElementById('btnRentClienteCalcular').addEventListener('click', asyn
       else fila.costo += costoUnit * Number(v.cantidad || 0);
     });
 
-    const filas = Object.values(porCliente).sort((a, b) => (b.facturado - b.costo) - (a.facturado - a.costo));
-    const totalFacturado = filas.reduce((s, f) => s + f.facturado, 0);
-    const totalCosto = filas.reduce((s, f) => s + f.costo, 0);
+    rentClienteUltimasFilas = Object.values(porCliente);
+    const totalFacturado = rentClienteUltimasFilas.reduce((s, f) => s + f.facturado, 0);
+    const totalCosto = rentClienteUltimasFilas.reduce((s, f) => s + f.costo, 0);
     const margen = totalFacturado - totalCosto;
     const margenPct = totalFacturado > 0 ? (margen / totalFacturado) * 100 : 0;
 
@@ -4479,18 +4479,7 @@ document.getElementById('btnRentClienteCalcular').addEventListener('click', asyn
     document.getElementById('rentClienteSinCostoHint').textContent = sinCosto
       ? `⚠️ Hay ${sinCosto} venta(s) en esta selección sin costo cargado (o sin cotización del dólar de esa fecha) — el costo de esos clientes queda incompleto.`
       : '';
-    document.getElementById('rentClienteTbody').innerHTML = filas.map(f => {
-      const m = f.facturado - f.costo;
-      const pct = f.facturado > 0 ? (m / f.facturado) * 100 : 0;
-      return `<tr>
-        <td>${f.cliente.razon_social}${f.costoIncompleto ? ' <span class="hint">(costo incompleto)</span>' : ''}</td>
-        <td>${f.cliente.localidad || '—'}</td>
-        <td>${FORMATO_PESOS(f.facturado)}</td>
-        <td>${FORMATO_PESOS(f.costo)}</td>
-        <td>${FORMATO_PESOS(m)}</td>
-        <td>${Math.round(pct)}%</td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="6" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
+    renderRentClienteTbody();
     document.getElementById('rentClienteResultado').style.display = 'block';
   } catch (e) { reportError(e); }
   finally { btn.disabled = false; btn.textContent = 'Calcular'; }
