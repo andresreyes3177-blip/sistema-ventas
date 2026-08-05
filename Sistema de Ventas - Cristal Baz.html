@@ -8265,7 +8265,7 @@ document.getElementById('btnVentasBorrarConfirmar').addEventListener('click', as
 // puede_ver_rentabilidad() de la base de datos, así lo que se ve en
 // pantalla coincide con lo que realmente se puede traer.
 function puedeVerRentabilidad() {
-  return !!(currentProfile && currentProfile.role === 'admin' && currentProfile.protegido === true);
+  return !!(currentProfile && ((currentProfile.role === 'admin' && currentProfile.protegido === true) || currentProfile.ve_rentabilidad === true));
 }
 
 // Trae costo por artículo y el historial de cotización del dólar — solo si
