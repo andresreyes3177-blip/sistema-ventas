@@ -4394,6 +4394,42 @@ document.getElementById('btnRentDescargarSinCosto').addEventListener('click', ()
   XLSX.writeFile(wb, `Articulos sin costo -${rango} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
 });
 
+let rentClienteOrden = 'desc'; // por Margen % (rentabilidad) — 'desc' = mayor a menor
+let rentClienteUltimasFilas = [];
+
+// Margen % de una fila — los clientes sin facturado en el período quedan al
+// final tanto en "mayor a menor" como en "menor a mayor" (no hay rentabilidad
+// que ordenar ahí, no tendría sentido que aparezcan primero en ninguno de los dos).
+function rentClientePct(f) {
+  return f.facturado > 0 ? ((f.facturado - f.costo) / f.facturado) * 100 : null;
+}
+
+function renderRentClienteTbody() {
+  const conPct = rentClienteUltimasFilas.filter(f => rentClientePct(f) !== null);
+  const sinPct = rentClienteUltimasFilas.filter(f => rentClientePct(f) === null);
+  conPct.sort((a, b) => rentClienteOrden === 'desc' ? rentClientePct(b) - rentClientePct(a) : rentClientePct(a) - rentClientePct(b));
+  const filasOrdenadas = [...conPct, ...sinPct];
+
+  document.getElementById('rentClienteTbody').innerHTML = filasOrdenadas.map(f => {
+    const m = f.facturado - f.costo;
+    const pct = rentClientePct(f);
+    return `<tr>
+      <td>${f.cliente.razon_social}${f.costoIncompleto ? ' <span class="hint">(costo incompleto)</span>' : ''}</td>
+      <td>${f.cliente.localidad || '—'}</td>
+      <td>${FORMATO_PESOS(f.facturado)}</td>
+      <td>${FORMATO_PESOS(f.costo)}</td>
+      <td>${FORMATO_PESOS(m)}</td>
+      <td>${pct !== null ? Math.round(pct) + '%' : '—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
+}
+
+document.getElementById('btnRentClienteOrden').addEventListener('click', () => {
+  rentClienteOrden = rentClienteOrden === 'desc' ? 'asc' : 'desc';
+  document.getElementById('btnRentClienteOrden').textContent = 'Ordenar: ' + (rentClienteOrden === 'desc' ? 'Mayor a menor rentabilidad ▾' : 'Menor a mayor rentabilidad ▴');
+  renderRentClienteTbody();
+});
+
 document.getElementById('btnRentClienteCalcular').addEventListener('click', async () => {
   const btn = document.getElementById('btnRentClienteCalcular');
   btn.disabled = true;
