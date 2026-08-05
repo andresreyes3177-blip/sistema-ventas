@@ -3990,6 +3990,21 @@ function calcularAlertasResumenMes() {
 
   const alertas = analizadosList.filter(a => a.enAlerta).sort((a, b) => b.caidaPct - a.caidaPct);
 
+  // Clientes SIN promedio trimestral (no compraron nada en el trimestre
+  // base) que sí compraron en el mes elegido — "nuevos" en el sentido de
+  // "no tienen historial reciente con qué compararse", no necesariamente
+  // clientes recién creados. Se muestran aparte, marcados, en vez de
+  // desaparecer de la cuenta como pasaba antes.
+  const idsAnalizados = new Set(analizadosList.map(a => a.cliente.id));
+  const clientesNuevos = [];
+  clientesFiltrados.forEach(c => {
+    if (idsAnalizados.has(c.id)) return;
+    const meses = cache.consumoPorClienteMes[c.id] || {};
+    const ventasMes = Number((meses[mesInput] || {}).total || 0);
+    if (ventasMes > 0) clientesNuevos.push({ cliente: c, v1: 0, v2: 0, v3: 0, promedio: null, ventasMes, caidaPct: null, enAlerta: false, esNuevo: true });
+  });
+  clientesNuevos.sort((a, b) => b.ventasMes - a.ventasMes);
+
   // Total real del mes: TODOS los clientes filtrados, no solo los que tienen
   // promedio trimestral — si no, un cliente nuevo (o que volvió después de
   // no comprar en el trimestre base) queda afuera de la suma, y el total no
@@ -3999,7 +4014,7 @@ function calcularAlertasResumenMes() {
     return s + Number((meses[mesInput] || {}).total || 0);
   }, 0);
 
-  return { alertas, analizadosList, baseMeses, clientesFiltrados, totalVentasTodos };
+  return { alertas, analizadosList, clientesNuevos, baseMeses, clientesFiltrados, totalVentasTodos };
 }
 
 // Formatea un porcentaje respecto a 100 como "X% arriba" / "X% abajo" — más
