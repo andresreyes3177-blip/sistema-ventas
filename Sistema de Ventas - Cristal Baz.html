@@ -4302,6 +4302,8 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
 
 document.querySelector('[data-tab="rentabilidad"]').addEventListener('click', refreshRentabilidadTab);
 
+let rentArticuloSinCostoUltimo = null;
+
 document.getElementById('btnRentArticuloCalcular').addEventListener('click', async () => {
   const btn = document.getElementById('btnRentArticuloCalcular');
   btn.disabled = true;
