@@ -4360,6 +4360,8 @@ document.getElementById('btnRentArticuloCalcular').addEventListener('click', asy
     document.getElementById('rentArticuloSinCostoHint').textContent = sinCosto.size
       ? `⚠️ ${sinCosto.size} artículo(s) vendidos en esta selección no tienen costo cargado (o falta la cotización del dólar de esa fecha) — no entran en el cálculo de costo/margen: ${[...sinCosto].slice(0, 8).join(', ')}${sinCosto.size > 8 ? '...' : ''}`
       : '';
+    rentArticuloSinCostoUltimo = filas.filter(f => !f.tieneCosto).sort((a, b) => b.facturado - a.facturado);
+    document.getElementById('rentArticuloSinCostoAcciones').style.display = rentArticuloSinCostoUltimo.length ? 'block' : 'none';
     document.getElementById('rentArticuloTbody').innerHTML = filas.map(f => {
       const m = f.tieneCosto ? f.facturado - f.costo : null;
       const pct = f.tieneCosto && f.facturado > 0 ? (m / f.facturado) * 100 : null;
