@@ -5508,6 +5508,20 @@ async function refreshEquipo() {
       } catch (e) { reportError(e); }
     });
   });
+  document.querySelectorAll('[data-rent-usuario]').forEach(chk => {
+    chk.addEventListener('change', async () => {
+      const profileId = chk.dataset.rentUsuario;
+      try {
+        await DB.setVeRentabilidad(profileId, chk.checked);
+        // Si el permiso cambiado es el de la propia cuenta logueada, refrescar
+        // ya mismo para que aparezca/desaparezca la pestaña sin recargar la página.
+        if (currentProfile && currentProfile.id === profileId) {
+          currentProfile = await loadCurrentProfile(profileId);
+          aplicarFiltroPorRol();
+        }
+      } catch (e) { reportError(e); }
+    });
+  });
 }
 
 // ---------------- Campañas ----------------
