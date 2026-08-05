@@ -4402,24 +4402,33 @@ document.getElementById('btnRentDescargarSinCosto').addEventListener('click', ()
   XLSX.writeFile(wb, `Articulos sin costo -${rango} - ${new Date().toISOString().slice(0, 10)}.xlsx`);
 });
 
-let rentClienteOrden = 'desc'; // por Margen % (rentabilidad) — 'desc' = mayor a menor
+let rentClienteOrden = 'desc'; // 'desc' = mayor a menor
+let rentClienteCriterio = 'pct'; // 'pct' = Margen % (rentabilidad) | 'monto' = Margen $ (monto)
 let rentClienteUltimasFilas = [];
 
-// Margen % de una fila — los clientes sin facturado en el período quedan al
-// final tanto en "mayor a menor" como en "menor a mayor" (no hay rentabilidad
-// que ordenar ahí, no tendría sentido que aparezcan primero en ninguno de los dos).
+// Margen % de una fila — los clientes sin facturado en el período no tienen
+// un % de rentabilidad calculable (quedan al final, en los dos sentidos).
 function rentClientePct(f) {
   return f.facturado > 0 ? ((f.facturado - f.costo) / f.facturado) * 100 : null;
 }
+// Margen $ siempre se puede calcular (aunque sea $0), a diferencia del %.
+function rentClienteMonto(f) {
+  return f.facturado - f.costo;
+}
 
 function renderRentClienteTbody() {
-  const conPct = rentClienteUltimasFilas.filter(f => rentClientePct(f) !== null);
-  const sinPct = rentClienteUltimasFilas.filter(f => rentClientePct(f) === null);
-  conPct.sort((a, b) => rentClienteOrden === 'desc' ? rentClientePct(b) - rentClientePct(a) : rentClientePct(a) - rentClientePct(b));
-  const filasOrdenadas = [...conPct, ...sinPct];
+  let filasOrdenadas;
+  if (rentClienteCriterio === 'monto') {
+    filasOrdenadas = [...rentClienteUltimasFilas].sort((a, b) => rentClienteOrden === 'desc' ? rentClienteMonto(b) - rentClienteMonto(a) : rentClienteMonto(a) - rentClienteMonto(b));
+  } else {
+    const conPct = rentClienteUltimasFilas.filter(f => rentClientePct(f) !== null);
+    const sinPct = rentClienteUltimasFilas.filter(f => rentClientePct(f) === null);
+    conPct.sort((a, b) => rentClienteOrden === 'desc' ? rentClientePct(b) - rentClientePct(a) : rentClientePct(a) - rentClientePct(b));
+    filasOrdenadas = [...conPct, ...sinPct];
+  }
 
   document.getElementById('rentClienteTbody').innerHTML = filasOrdenadas.map(f => {
-    const m = f.facturado - f.costo;
+    const m = rentClienteMonto(f);
     const pct = rentClientePct(f);
     return `<tr>
       <td>${f.cliente.razon_social}${f.costoIncompleto ? ' <span class="hint">(costo incompleto)</span>' : ''}</td>
@@ -4432,9 +4441,14 @@ function renderRentClienteTbody() {
   }).join('') || '<tr><td colspan="6" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
 }
 
+document.getElementById('rentClienteCriterioOrden').addEventListener('change', (e) => {
+  rentClienteCriterio = e.target.value;
+  renderRentClienteTbody();
+});
+
 document.getElementById('btnRentClienteOrden').addEventListener('click', () => {
   rentClienteOrden = rentClienteOrden === 'desc' ? 'asc' : 'desc';
-  document.getElementById('btnRentClienteOrden').textContent = 'Ordenar: ' + (rentClienteOrden === 'desc' ? 'Mayor a menor rentabilidad ▾' : 'Menor a mayor rentabilidad ▴');
+  document.getElementById('btnRentClienteOrden').textContent = rentClienteOrden === 'desc' ? 'Mayor a menor ▾' : 'Menor a mayor ▴';
   renderRentClienteTbody();
 });
 
