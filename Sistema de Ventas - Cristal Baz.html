@@ -4076,6 +4076,20 @@ function filaTotalesHtml(lista) {
 // blanco y negro, no solo en pantalla. El ⚠️ en el nombre es un respaldo
 // extra por si algún visor no imprime fondos.
 function filaClienteHtml(a) {
+  if (a.esNuevo) {
+    // Sin promedio trimestral con qué compararlo — no compró nada en el
+    // trimestre base, así que no hay "caída" que calcular. Se resalta en
+    // celeste para que se note que es un caso distinto, no un dato faltante.
+    return `<tr style="background:#e8f2fb;">
+      <td>🆕 ${a.cliente.razon_social}</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td>
+      <td>Sin promedio (nuevo)</td>
+    </tr>`;
+  }
   const filaStyle = a.enAlerta ? ' style="background:#000; color:#fff; font-weight:bold;"' : '';
   const marca = a.enAlerta ? '⚠️ ' : '';
   const textoVsPromedio = a.caidaPct >= 0 ? `${a.caidaPct}% abajo` : `${Math.abs(a.caidaPct)}% arriba`;
