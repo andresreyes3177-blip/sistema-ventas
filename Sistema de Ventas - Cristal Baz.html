@@ -2087,6 +2087,7 @@ const DB_RAW = {
   // Usuarios / permisos
   listProfiles: async () => { const { data, error } = await sb.from('profiles').select('*').order('nombre'); if (error) throw error; return data; },
   updateProfileRole: async (id, role) => { const { error } = await sb.from('profiles').update({ role }).eq('id', id); if (error) throw error; },
+  setVeRentabilidad: async (id, veRentabilidad) => { const { error } = await sb.from('profiles').update({ ve_rentabilidad: veRentabilidad }).eq('id', id); if (error) throw error; },
 
   // Sucursales permitidas por usuario (un usuario puede tener varias)
   listProfileSucursales: async () => { const { data, error } = await sb.from('profile_sucursales').select('*'); if (error) throw error; return data; },
