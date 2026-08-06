@@ -4409,10 +4409,10 @@ document.getElementById('btnRentArticuloCalcular').addEventListener('click', asy
       else fila.costo += costoUnit * Number(v.cantidad || 0);
     });
 
-    const filas = Object.values(porArticulo).sort((a, b) => (b.facturado - b.costo) - (a.facturado - a.costo));
-    const totalFacturado = filas.reduce((s, f) => s + f.facturado, 0);
-    const totalCosto = filas.filter(f => f.tieneCosto).reduce((s, f) => s + f.costo, 0);
-    const facturadoConCosto = filas.filter(f => f.tieneCosto).reduce((s, f) => s + f.facturado, 0);
+    rentArticuloUltimasFilas = Object.values(porArticulo);
+    const totalFacturado = rentArticuloUltimasFilas.reduce((s, f) => s + f.facturado, 0);
+    const totalCosto = rentArticuloUltimasFilas.filter(f => f.tieneCosto).reduce((s, f) => s + f.costo, 0);
+    const facturadoConCosto = rentArticuloUltimasFilas.filter(f => f.tieneCosto).reduce((s, f) => s + f.facturado, 0);
     const margen = facturadoConCosto - totalCosto;
     const margenPct = facturadoConCosto > 0 ? (margen / facturadoConCosto) * 100 : 0;
 
@@ -4423,20 +4423,9 @@ document.getElementById('btnRentArticuloCalcular').addEventListener('click', asy
     document.getElementById('rentArticuloSinCostoHint').textContent = sinCosto.size
       ? `⚠️ ${sinCosto.size} artículo(s) vendidos en esta selección no tienen costo cargado (o falta la cotización del dólar de esa fecha) — no entran en el cálculo de costo/margen: ${[...sinCosto].slice(0, 8).join(', ')}${sinCosto.size > 8 ? '...' : ''}`
       : '';
-    rentArticuloSinCostoUltimo = filas.filter(f => !f.tieneCosto).sort((a, b) => b.facturado - a.facturado);
+    rentArticuloSinCostoUltimo = rentArticuloUltimasFilas.filter(f => !f.tieneCosto).sort((a, b) => b.facturado - a.facturado);
     document.getElementById('rentArticuloSinCostoAcciones').style.display = rentArticuloSinCostoUltimo.length ? 'block' : 'none';
-    document.getElementById('rentArticuloTbody').innerHTML = filas.map(f => {
-      const m = f.tieneCosto ? f.facturado - f.costo : null;
-      const pct = f.tieneCosto && f.facturado > 0 ? (m / f.facturado) * 100 : null;
-      return `<tr>
-        <td>${f.articulo.nombre}</td>
-        <td>${f.cantidad.toLocaleString('es-AR')}</td>
-        <td>${FORMATO_PESOS(f.facturado)}</td>
-        <td>${f.tieneCosto ? FORMATO_PESOS(f.costo) : '<span class="hint">sin costo</span>'}</td>
-        <td>${m !== null ? FORMATO_PESOS(m) : '—'}</td>
-        <td>${pct !== null ? Math.round(pct) + '%' : '—'}</td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="6" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
+    renderRentArticuloTbody();
     document.getElementById('rentArticuloResultado').style.display = 'block';
   } catch (e) { reportError(e); }
   finally { btn.disabled = false; btn.textContent = 'Calcular'; }
