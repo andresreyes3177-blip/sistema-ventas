@@ -2625,9 +2625,23 @@ function renderClientes() {
       <td>${tagsHtml || '<span class="hint">Sin tags</span>'}</td>
       <td>
         <button class="btn-link" data-open-cliente="${c.id}">Ver / Editar</button>
+        ${verDeshabilitados
+          ? `<button class="btn-link" data-habilitar-cliente="${c.id}">Habilitar</button>`
+          : (porcentaje === null ? `<button class="btn-link btn-danger" data-deshabilitar-cliente="${c.id}">Deshabilitar</button>` : '')}
       </td>
     </tr>`;
   }).join('');
+  tbody.querySelectorAll('[data-deshabilitar-cliente]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('¿Deshabilitar este cliente? Deja de verse en el listado normal, pero no se borra — lo podés volver a habilitar cuando quieras desde "Ver deshabilitados".')) return;
+      try { await DB.setClienteDeshabilitado(btn.dataset.deshabilitarCliente, true); await refreshClientes(); } catch (e) { reportError(e); }
+    });
+  });
+  tbody.querySelectorAll('[data-habilitar-cliente]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      try { await DB.setClienteDeshabilitado(btn.dataset.habilitarCliente, false); await refreshClientes(); } catch (e) { reportError(e); }
+    });
+  });
   tbody.querySelectorAll('[data-open-cliente]').forEach(btn => {
     btn.addEventListener('click', () => openClienteModal(btn.dataset.openCliente));
   });
