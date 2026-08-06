@@ -4320,6 +4320,52 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
 document.querySelector('[data-tab="rentabilidad"]').addEventListener('click', refreshRentabilidadTab);
 
 let rentArticuloSinCostoUltimo = null;
+let rentArticuloOrden = 'desc'; // 'desc' = mayor a menor
+let rentArticuloCriterio = 'monto'; // 'monto' = Margen $ | 'pct' = Margen % (rentabilidad)
+let rentArticuloUltimasFilas = [];
+
+function rentArticuloMonto(f) { return f.facturado - f.costo; }
+// null si no hay costo cargado o no se facturó nada — no hay % de
+// rentabilidad real que ordenar ahí (quedan al final, en los dos sentidos).
+function rentArticuloPct(f) {
+  if (!f.tieneCosto || f.facturado <= 0) return null;
+  return ((f.facturado - f.costo) / f.facturado) * 100;
+}
+
+function renderRentArticuloTbody() {
+  let filasOrdenadas;
+  if (rentArticuloCriterio === 'pct') {
+    const conPct = rentArticuloUltimasFilas.filter(f => rentArticuloPct(f) !== null);
+    const sinPct = rentArticuloUltimasFilas.filter(f => rentArticuloPct(f) === null);
+    conPct.sort((a, b) => rentArticuloOrden === 'desc' ? rentArticuloPct(b) - rentArticuloPct(a) : rentArticuloPct(a) - rentArticuloPct(b));
+    filasOrdenadas = [...conPct, ...sinPct];
+  } else {
+    filasOrdenadas = [...rentArticuloUltimasFilas].sort((a, b) => rentArticuloOrden === 'desc' ? rentArticuloMonto(b) - rentArticuloMonto(a) : rentArticuloMonto(a) - rentArticuloMonto(b));
+  }
+
+  document.getElementById('rentArticuloTbody').innerHTML = filasOrdenadas.map(f => {
+    const m = f.tieneCosto ? f.facturado - f.costo : null;
+    const pct = rentArticuloPct(f);
+    return `<tr>
+      <td>${f.articulo.nombre}</td>
+      <td>${f.cantidad.toLocaleString('es-AR')}</td>
+      <td>${FORMATO_PESOS(f.facturado)}</td>
+      <td>${f.tieneCosto ? FORMATO_PESOS(f.costo) : '<span class="hint">sin costo</span>'}</td>
+      <td>${m !== null ? FORMATO_PESOS(m) : '—'}</td>
+      <td>${pct !== null ? Math.round(pct) + '%' : '—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
+}
+
+document.getElementById('rentArticuloCriterioOrden').addEventListener('change', (e) => {
+  rentArticuloCriterio = e.target.value;
+  renderRentArticuloTbody();
+});
+document.getElementById('btnRentArticuloOrden').addEventListener('click', () => {
+  rentArticuloOrden = rentArticuloOrden === 'desc' ? 'asc' : 'desc';
+  document.getElementById('btnRentArticuloOrden').textContent = rentArticuloOrden === 'desc' ? 'Mayor a menor ▾' : 'Menor a mayor ▴';
+  renderRentArticuloTbody();
+});
 
 document.getElementById('btnRentArticuloCalcular').addEventListener('click', async () => {
   const btn = document.getElementById('btnRentArticuloCalcular');
