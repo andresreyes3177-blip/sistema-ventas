@@ -2564,7 +2564,10 @@ function renderClientes() {
   const tbody = document.getElementById('clientesTbody');
 
   refreshFiltroLocalidad();
-  document.getElementById('deshabilitadosCount').textContent = cache.clientes.filter(c => c.deshabilitado).length;
+  const totalDeshabilitados = cache.clientes.filter(c => c.deshabilitado).length;
+  document.getElementById('btnVerDeshabilitados').textContent = verDeshabilitados
+    ? '👁️ Ver clientes activos'
+    : `🚫 Ver deshabilitados (${totalDeshabilitados})`;
 
   let lista = cache.clientes.filter(c => !!c.deshabilitado === verDeshabilitados);
   lista = lista.filter(c => c.razon_social.toLowerCase().includes(filtro));
