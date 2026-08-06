@@ -2564,7 +2564,10 @@ function renderClientes() {
   const tbody = document.getElementById('clientesTbody');
 
   refreshFiltroLocalidad();
-  let lista = cache.clientes.filter(c => c.razon_social.toLowerCase().includes(filtro));
+  document.getElementById('deshabilitadosCount').textContent = cache.clientes.filter(c => c.deshabilitado).length;
+
+  let lista = cache.clientes.filter(c => !!c.deshabilitado === verDeshabilitados);
+  lista = lista.filter(c => c.razon_social.toLowerCase().includes(filtro));
   if (localidadFiltro) lista = lista.filter(c => c.localidad === localidadFiltro);
   if (estadoComercialFiltro === 'no_activo') lista = lista.filter(c => c.estado_comercial && c.estado_comercial !== 'cliente');
   else if (estadoComercialFiltro) lista = lista.filter(c => (c.estado_comercial || 'cliente') === estadoComercialFiltro);
