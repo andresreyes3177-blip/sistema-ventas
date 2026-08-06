@@ -2703,9 +2703,6 @@ document.getElementById('btnOrdenConsumoClientes').addEventListener('click', () 
 let verDeshabilitados = false;
 document.getElementById('btnVerDeshabilitados').addEventListener('click', () => {
   verDeshabilitados = !verDeshabilitados;
-  document.getElementById('btnVerDeshabilitados').textContent = verDeshabilitados
-    ? '👁️ Ver clientes activos'
-    : '🚫 Ver deshabilitados (' + cache.clientes.filter(c => c.deshabilitado).length + ')';
   renderClientes();
 });
 document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
