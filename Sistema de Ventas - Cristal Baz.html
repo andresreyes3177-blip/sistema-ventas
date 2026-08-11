@@ -1723,8 +1723,13 @@
         <button class="btn-secondary" id="btnActivarNotificaciones">🔔 Activar avisos del navegador</button>
       </div>
       <p class="hint" id="notifEstadoHint"></p>
+      <div class="field">
+        <label>Mostrar:</label>
+        <div class="checkbox-grid" id="alertasFiltroTipos"></div>
+      </div>
       <div id="alertasLista"></div>
       <p class="hint" id="alertasEmptyHint" style="display:none;">No hay alertas pendientes por ahora.</p>
+      <p class="hint" id="alertasFiltroEmptyHint" style="display:none;">No hay alertas pendientes de este tipo (aunque sí hay de otros — probá tildando más arriba).</p>
     </div>
   </section>
 
@@ -6010,12 +6015,38 @@ document.getElementById('btnGuardarConfigAlertas').addEventListener('click', asy
   } catch (e) { reportError(e); }
 });
 
-async function refreshAlertas() {
-  const idsPermitidos = new Set(cache.clientes.map(c => c.id));
-  const alertas = (await DB.listAlertasPendientes()).filter(a => idsPermitidos.has(a.cliente_id));
-  document.getElementById('alertasBadge').textContent = alertas.length ? `(${alertas.length})` : '';
+// Tipos de alerta que hoy genera el sistema (ver migraciones 4, 7, 8 y 13)
+// — cada uno se puede tildar/destildar por separado para ver solo lo que
+// importa en el momento. Un tipo que no está en esta lista (por ejemplo uno
+// viejo que haya quedado en la base) nunca se oculta, porque no tiene
+// casillero para destildarlo.
+const TIPOS_ALERTA_FILTRABLES = ['sin_contacto', 'consumo_bajo', 'cliente_nuevo', 'recordatorio_contacto'];
+let alertasFiltroActivos = new Set(TIPOS_ALERTA_FILTRABLES);
+let alertasUltimaLista = [];
+
+function renderAlertasFiltroTipos(alertas) {
+  const conteoPorTipo = {};
+  alertas.forEach(a => { conteoPorTipo[a.tipo] = (conteoPorTipo[a.tipo] || 0) + 1; });
+  document.getElementById('alertasFiltroTipos').innerHTML = TIPOS_ALERTA_FILTRABLES.map(tipo => `
+    <label class="checkbox-chip">
+      <input type="checkbox" data-alerta-filtro-tipo="${tipo}" ${alertasFiltroActivos.has(tipo) ? 'checked' : ''}>
+      ${ALERTA_LABELS[tipo] || tipo} (${conteoPorTipo[tipo] || 0})
+    </label>
+  `).join('');
+  document.querySelectorAll('[data-alerta-filtro-tipo]').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const tipo = chk.dataset.alertaFiltroTipo;
+      if (chk.checked) alertasFiltroActivos.add(tipo); else alertasFiltroActivos.delete(tipo);
+      renderAlertasLista(alertasUltimaLista);
+    });
+  });
+}
+
+function renderAlertasLista(alertas) {
+  const filtradas = alertas.filter(a => alertasFiltroActivos.has(a.tipo) || !TIPOS_ALERTA_FILTRABLES.includes(a.tipo));
   document.getElementById('alertasEmptyHint').style.display = alertas.length === 0 ? 'block' : 'none';
-  document.getElementById('alertasLista').innerHTML = alertas.map(a => {
+  document.getElementById('alertasFiltroEmptyHint').style.display = (alertas.length > 0 && filtradas.length === 0) ? 'block' : 'none';
+  document.getElementById('alertasLista').innerHTML = filtradas.map(a => {
     const cliente = cache.clientes.find(c => c.id === a.cliente_id);
     return `<div class="alerta-row tipo-${a.tipo}">
       <div>
@@ -6031,6 +6062,15 @@ async function refreshAlertas() {
       try { await DB.resolverAlerta(btn.dataset.resolverAlerta); await refreshAlertas(); } catch (e) { reportError(e); }
     });
   });
+}
+
+async function refreshAlertas() {
+  const idsPermitidos = new Set(cache.clientes.map(c => c.id));
+  const alertas = (await DB.listAlertasPendientes()).filter(a => idsPermitidos.has(a.cliente_id));
+  alertasUltimaLista = alertas;
+  document.getElementById('alertasBadge').textContent = alertas.length ? `(${alertas.length})` : '';
+  renderAlertasFiltroTipos(alertas);
+  renderAlertasLista(alertas);
 }
 
 let notificacionesActivas = false;
