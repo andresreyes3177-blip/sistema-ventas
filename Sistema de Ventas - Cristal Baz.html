@@ -1589,6 +1589,7 @@
     <div class="toolbar mode-tabs" id="rentSubtabsBar">
       <button class="btn-tab is-active" data-subtab-rent="articulo">📦 Por Artículo</button>
       <button class="btn-tab" data-subtab-rent="cliente">👤 Por Cliente</button>
+      <button class="btn-tab" data-subtab-rent="localidad">📍 Por Localidad</button>
     </div>
 
     <div class="card rent-subpanel" id="rentArticuloCard">
@@ -1661,6 +1662,39 @@
           <table>
             <thead><tr><th>Cliente</th><th>Localidad</th><th>Facturado</th><th>Costo</th><th>Margen $</th><th>Margen %</th></tr></thead>
             <tbody id="rentClienteTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card rent-subpanel" id="rentLocalidadCard" style="display:none;">
+      <h2>Rentabilidad por Localidad</h2>
+      <p class="hint">Agrupa el margen de todos los clientes de cada localidad — útil para ver qué zonas son más rentables, más allá de cuánto facturan.</p>
+      <div class="field-row">
+        <div class="field"><label>Desde</label><input type="date" id="rentLocalidadDesde"></div>
+        <div class="field"><label>Hasta</label><input type="date" id="rentLocalidadHasta"></div>
+        <div class="field" style="align-self:flex-end;"><button type="button" class="btn-primary" id="btnRentLocalidadCalcular">Calcular</button></div>
+      </div>
+      <div id="rentLocalidadResultado" style="display:none;">
+        <div class="grid-2" style="grid-template-columns:repeat(4,1fr);">
+          <div class="card"><h4>Facturado</h4><p id="rentLocalidadFacturado" style="font-size:1.3rem; font-weight:600;"></p></div>
+          <div class="card"><h4>Costo</h4><p id="rentLocalidadCosto" style="font-size:1.3rem; font-weight:600;"></p></div>
+          <div class="card" style="background:var(--green-bg);"><h4>Margen</h4><p id="rentLocalidadMargen" style="font-size:1.3rem; font-weight:600; color:var(--green);"></p></div>
+          <div class="card" style="background:var(--green-bg);"><h4>Margen promedio</h4><p id="rentLocalidadMargenPct" style="font-size:1.3rem; font-weight:600; color:var(--green);"></p></div>
+        </div>
+        <p class="hint" id="rentLocalidadSinCostoHint"></p>
+        <div class="actions">
+          <span class="hint">Ordenar por:</span>
+          <select id="rentLocalidadCriterioOrden">
+            <option value="pct">Margen % (rentabilidad)</option>
+            <option value="monto">Margen $ (monto)</option>
+          </select>
+          <button type="button" class="btn-secondary" id="btnRentLocalidadOrden">Mayor a menor ▾</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Localidad</th><th>Clientes que compraron</th><th>Facturado</th><th>Costo</th><th>Margen $</th><th>Margen %</th></tr></thead>
+            <tbody id="rentLocalidadTbody"></tbody>
           </table>
         </div>
       </div>
@@ -3903,6 +3937,7 @@ let rentSubtabActiva = 'articulo';
 function mostrarRentSubtabActiva() {
   document.getElementById('rentArticuloCard').style.display = rentSubtabActiva === 'articulo' ? 'block' : 'none';
   document.getElementById('rentClienteCard').style.display = rentSubtabActiva === 'cliente' ? 'block' : 'none';
+  document.getElementById('rentLocalidadCard').style.display = rentSubtabActiva === 'localidad' ? 'block' : 'none';
 }
 document.querySelectorAll('[data-subtab-rent]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -4588,6 +4623,109 @@ document.getElementById('btnRentClienteCalcular').addEventListener('click', asyn
       : '';
     renderRentClienteTbody();
     document.getElementById('rentClienteResultado').style.display = 'block';
+  } catch (e) { reportError(e); }
+  finally { btn.disabled = false; btn.textContent = 'Calcular'; }
+});
+
+// ---------------- Rentabilidad por Localidad ----------------
+// Mismo cálculo que Por Cliente, pero agrupado por la localidad del cliente
+// en vez de por cliente individual — para comparar zonas entre sí.
+let rentLocalidadOrden = 'desc'; // 'desc' = mayor a menor
+let rentLocalidadCriterio = 'pct';
+let rentLocalidadUltimasFilas = [];
+
+function rentLocalidadPct(f) {
+  return f.facturado > 0 ? ((f.facturado - f.costo) / f.facturado) * 100 : null;
+}
+function rentLocalidadMonto(f) {
+  return f.facturado - f.costo;
+}
+
+function renderRentLocalidadTbody() {
+  let filasOrdenadas;
+  if (rentLocalidadCriterio === 'monto') {
+    filasOrdenadas = [...rentLocalidadUltimasFilas].sort((a, b) => rentLocalidadOrden === 'desc' ? rentLocalidadMonto(b) - rentLocalidadMonto(a) : rentLocalidadMonto(a) - rentLocalidadMonto(b));
+  } else {
+    const conPct = rentLocalidadUltimasFilas.filter(f => rentLocalidadPct(f) !== null);
+    const sinPct = rentLocalidadUltimasFilas.filter(f => rentLocalidadPct(f) === null);
+    conPct.sort((a, b) => rentLocalidadOrden === 'desc' ? rentLocalidadPct(b) - rentLocalidadPct(a) : rentLocalidadPct(a) - rentLocalidadPct(b));
+    filasOrdenadas = [...conPct, ...sinPct];
+  }
+
+  document.getElementById('rentLocalidadTbody').innerHTML = filasOrdenadas.map(f => {
+    const m = rentLocalidadMonto(f);
+    const pct = rentLocalidadPct(f);
+    return `<tr>
+      <td>${f.localidad}${f.costoIncompleto ? ' <span class="hint">(costo incompleto)</span>' : ''}</td>
+      <td>${f.clientes.size}</td>
+      <td>${FORMATO_PESOS(f.facturado)}</td>
+      <td>${FORMATO_PESOS(f.costo)}</td>
+      <td>${FORMATO_PESOS(m)}</td>
+      <td>${pct !== null ? Math.round(pct) + '%' : '—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="hint">No hay ventas que coincidan con estos filtros.</td></tr>';
+}
+
+document.getElementById('rentLocalidadCriterioOrden').addEventListener('change', (e) => {
+  rentLocalidadCriterio = e.target.value;
+  renderRentLocalidadTbody();
+});
+
+document.getElementById('btnRentLocalidadOrden').addEventListener('click', () => {
+  rentLocalidadOrden = rentLocalidadOrden === 'desc' ? 'asc' : 'desc';
+  document.getElementById('btnRentLocalidadOrden').textContent = rentLocalidadOrden === 'desc' ? 'Mayor a menor ▾' : 'Menor a mayor ▴';
+  renderRentLocalidadTbody();
+});
+
+document.getElementById('btnRentLocalidadCalcular').addEventListener('click', async () => {
+  const btn = document.getElementById('btnRentLocalidadCalcular');
+  btn.disabled = true;
+  btn.textContent = 'Calculando...';
+  try {
+    await asegurarVentasDetalladas();
+    const desde = document.getElementById('rentLocalidadDesde').value;
+    const hasta = document.getElementById('rentLocalidadHasta').value;
+    const clientesPorId = {};
+    cache.clientes.forEach(c => { clientesPorId[c.id] = c; });
+    const idsPermitidos = new Set(cache.clientes.map(c => c.id));
+
+    const ventasFiltradas = cache.ventas.filter(v => {
+      if (!v.articulo_id || !idsPermitidos.has(v.cliente_id)) return false;
+      if (desde && v.fecha < desde) return false;
+      if (hasta && v.fecha > hasta) return false;
+      return true;
+    });
+
+    const porLocalidad = {};
+    let sinCosto = 0;
+    ventasFiltradas.forEach(v => {
+      const cliente = clientesPorId[v.cliente_id];
+      if (!cliente) return;
+      const localidad = cliente.localidad || 'Sin localidad';
+      if (!porLocalidad[localidad]) porLocalidad[localidad] = { localidad, facturado: 0, costo: 0, costoIncompleto: false, clientes: new Set() };
+      const fila = porLocalidad[localidad];
+      fila.facturado += Number(v.monto || 0);
+      fila.clientes.add(cliente.id);
+      const costoUnit = costoUnitarioEfectivo(v.articulo_id, v.fecha);
+      if (costoUnit === null) { fila.costoIncompleto = true; sinCosto++; }
+      else fila.costo += costoUnit * Number(v.cantidad || 0);
+    });
+
+    rentLocalidadUltimasFilas = Object.values(porLocalidad);
+    const totalFacturado = rentLocalidadUltimasFilas.reduce((s, f) => s + f.facturado, 0);
+    const totalCosto = rentLocalidadUltimasFilas.reduce((s, f) => s + f.costo, 0);
+    const margen = totalFacturado - totalCosto;
+    const margenPct = totalFacturado > 0 ? (margen / totalFacturado) * 100 : 0;
+
+    document.getElementById('rentLocalidadFacturado').textContent = FORMATO_PESOS(totalFacturado);
+    document.getElementById('rentLocalidadCosto').textContent = FORMATO_PESOS(totalCosto);
+    document.getElementById('rentLocalidadMargen').textContent = FORMATO_PESOS(margen);
+    document.getElementById('rentLocalidadMargenPct').textContent = Math.round(margenPct) + '%';
+    document.getElementById('rentLocalidadSinCostoHint').textContent = sinCosto
+      ? `⚠️ Hay ${sinCosto} venta(s) en esta selección sin costo cargado (o sin cotización del dólar de esa fecha) — el costo de esas localidades queda incompleto.`
+      : '';
+    renderRentLocalidadTbody();
+    document.getElementById('rentLocalidadResultado').style.display = 'block';
   } catch (e) { reportError(e); }
   finally { btn.disabled = false; btn.textContent = 'Calcular'; }
 });
