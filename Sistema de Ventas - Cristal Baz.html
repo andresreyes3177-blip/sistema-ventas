@@ -1385,6 +1385,20 @@
             <tfoot><tr style="font-weight:600;"><td>Total</td><td id="vtaAnalisisTablaTotalCantidad"></td><td id="vtaAnalisisTablaTotalMonto"></td></tr></tfoot>
           </table>
         </div>
+        <button type="button" class="btn-secondary" id="btnVtaAnalisisVerClientes" style="margin-top:12px;">👥 Ver clientes que impactaron en esta búsqueda</button>
+        <div id="vtaAnalisisClientesWrap" style="display:none; margin-top:12px;">
+          <div class="field-row" style="align-items:center; justify-content:space-between;">
+            <h4 style="margin:0;">Clientes que impactaron en esta búsqueda</h4>
+            <button type="button" class="btn-secondary" id="btnVtaAnalisisClientesExcel">⬇️ Descargar Excel</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Cliente</th><th>Localidad</th><th>Cantidad vendida</th><th>Monto facturado</th></tr></thead>
+              <tbody id="vtaAnalisisClientesTbody"></tbody>
+              <tfoot><tr style="font-weight:600;"><td colspan="2">Total</td><td id="vtaAnalisisClientesTotalCantidad"></td><td id="vtaAnalisisClientesTotalMonto"></td></tr></tfoot>
+            </table>
+          </div>
+        </div>
       </div>
       <div id="vtaAnalisisGraficosWrap" style="display:none;">
         <div class="card">
@@ -7187,6 +7201,9 @@ document.getElementById('btnVtaAnalisisGenerar').addEventListener('click', async
     `${ventasFiltradas.length} venta(s) — $${Math.round(totalMonto).toLocaleString('es-AR')} — ${clientesInvolucrados} cliente(s) distinto(s).`;
 
   renderTablaAnalisisArticulos(ventasFiltradas);
+  renderTablaAnalisisClientes(ventasFiltradas);
+  document.getElementById('vtaAnalisisClientesWrap').style.display = 'none';
+  document.getElementById('btnVtaAnalisisVerClientes').textContent = '👥 Ver clientes que impactaron en esta búsqueda';
   renderChartAnalisisEvolucion(ventasFiltradas);
   renderChartAnalisisTopClientes(ventasFiltradas);
   renderChartAnalisisDistribucion(ventasFiltradas);
@@ -7391,6 +7408,59 @@ function renderTablaAnalisisArticulos(ventasFiltradas) {
   document.getElementById('vtaAnalisisTablaTotalCantidad').textContent = totalCantidad.toLocaleString('es-AR');
   document.getElementById('vtaAnalisisTablaTotalMonto').textContent = FORMATO_PESOS(totalMontoArticulos);
 }
+
+// Listado completo (no solo el Top 10 del gráfico) de los clientes que
+// compraron algo dentro de la selección de filtros actual, con cantidad y
+// monto por cliente — para saber exactamente quién impactó en el análisis.
+// Guarda las filas en vtaAnalisisClientesUltimasFilas para el Excel.
+let vtaAnalisisClientesUltimasFilas = [];
+function renderTablaAnalisisClientes(ventasFiltradas) {
+  const clientesPorId = {};
+  cache.clientes.forEach(c => { clientesPorId[c.id] = c; });
+
+  const porCliente = {};
+  ventasFiltradas.forEach(v => {
+    if (!porCliente[v.cliente_id]) porCliente[v.cliente_id] = { cantidad: 0, monto: 0 };
+    porCliente[v.cliente_id].cantidad += Number(v.cantidad || 0);
+    porCliente[v.cliente_id].monto += Number(v.monto || 0);
+  });
+
+  const filas = Object.entries(porCliente)
+    .map(([clienteId, t]) => {
+      const c = clientesPorId[clienteId];
+      return { nombre: c ? c.razon_social : '(cliente eliminado)', localidad: c ? (c.localidad || '-') : '-', ...t };
+    })
+    .sort((a, b) => b.monto - a.monto);
+  vtaAnalisisClientesUltimasFilas = filas;
+
+  document.getElementById('vtaAnalisisClientesTbody').innerHTML = filas.map(f => `
+    <tr><td>${f.nombre}</td><td>${f.localidad}</td><td>${f.cantidad.toLocaleString('es-AR')}</td><td>${FORMATO_PESOS(f.monto)}</td></tr>
+  `).join('');
+
+  const totalCantidad = filas.reduce((s, f) => s + f.cantidad, 0);
+  const totalMontoClientes = filas.reduce((s, f) => s + f.monto, 0);
+  document.getElementById('vtaAnalisisClientesTotalCantidad').textContent = totalCantidad.toLocaleString('es-AR');
+  document.getElementById('vtaAnalisisClientesTotalMonto').textContent = FORMATO_PESOS(totalMontoClientes);
+}
+
+document.getElementById('btnVtaAnalisisVerClientes').addEventListener('click', () => {
+  const wrap = document.getElementById('vtaAnalisisClientesWrap');
+  const btn = document.getElementById('btnVtaAnalisisVerClientes');
+  const mostrar = wrap.style.display === 'none';
+  wrap.style.display = mostrar ? 'block' : 'none';
+  btn.textContent = mostrar ? '🔼 Ocultar listado de clientes' : '👥 Ver clientes que impactaron en esta búsqueda';
+});
+
+document.getElementById('btnVtaAnalisisClientesExcel').addEventListener('click', () => {
+  if (!vtaAnalisisClientesUltimasFilas.length) { alert('No hay datos para exportar con los filtros actuales.'); return; }
+  const wb = XLSX.utils.book_new();
+  const filasClientes = vtaAnalisisClientesUltimasFilas.map(f => ({ 'Cliente': f.nombre, 'Localidad': f.localidad, 'Cantidad vendida': f.cantidad, 'Monto facturado': f.monto }));
+  const totalCantidad = vtaAnalisisClientesUltimasFilas.reduce((s, f) => s + f.cantidad, 0);
+  const totalMonto = vtaAnalisisClientesUltimasFilas.reduce((s, f) => s + f.monto, 0);
+  filasClientes.push({ 'Cliente': 'Total', 'Localidad': '', 'Cantidad vendida': totalCantidad, 'Monto facturado': totalMonto });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filasClientes), 'Clientes');
+  XLSX.writeFile(wb, `Clientes que impactaron - ${new Date().toISOString().slice(0, 10)}.xlsx`);
+});
 
 // El Excel no puede dibujar los gráficos como imagen (esa función no la
 // tiene la librería gratuita que usa el sistema) — en cambio, le agrega una
