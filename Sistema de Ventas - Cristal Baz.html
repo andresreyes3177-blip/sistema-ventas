@@ -1671,6 +1671,7 @@
       <h2>Rentabilidad por Localidad</h2>
       <p class="hint">Agrupa el margen de todos los clientes de cada localidad — útil para ver qué zonas son más rentables, más allá de cuánto facturan.</p>
       <div class="field-row">
+        <div class="field"><label>Localidad</label><select id="rentLocalidad"><option value="">Todas</option></select></div>
         <div class="field"><label>Desde</label><input type="date" id="rentLocalidadDesde"></div>
         <div class="field"><label>Hasta</label><input type="date" id="rentLocalidadHasta"></div>
         <div class="field" style="align-self:flex-end;"><button type="button" class="btn-primary" id="btnRentLocalidadCalcular">Calcular</button></div>
@@ -3994,9 +3995,20 @@ document.getElementById('rentGrupo').addEventListener('change', () => { document
 document.getElementById('rentRubro').addEventListener('change', () => { document.getElementById('rentSubrubro').value = ''; document.getElementById('rentArticulo').value = ''; refreshRentFiltroSubrubro(); });
 document.getElementById('rentSubrubro').addEventListener('change', () => { document.getElementById('rentArticulo').value = ''; refreshRentFiltroArticulo(); });
 
+// Localidad es un dato del cliente, no del artículo — mismo mecanismo que
+// refreshVtaAnalisisFiltroLocalidad(), independiente de la cadena Grupo >
+// Rubro > Subrubro > Artículo.
+function refreshRentFiltroLocalidad() {
+  const actual = document.getElementById('rentLocalidad').value;
+  const localidades = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))].sort();
+  document.getElementById('rentLocalidad').innerHTML = '<option value="">Todas</option>' + localidades.map(l => `<option value="${l}">${l}</option>`).join('');
+  if (localidades.includes(actual)) document.getElementById('rentLocalidad').value = actual;
+}
+
 async function refreshRentabilidadTab() {
   renderRentDolarTabla();
   refreshRentFiltroGrupo();
+  refreshRentFiltroLocalidad();
 }
 // ---------------- Resumen de Mes (caída de consumo vs. promedio histórico) ----------------
 // Misma lógica que ya se usa a mano en Excel: un cliente entra en alerta si
@@ -4685,9 +4697,13 @@ document.getElementById('btnRentLocalidadCalcular').addEventListener('click', as
     await asegurarVentasDetalladas();
     const desde = document.getElementById('rentLocalidadDesde').value;
     const hasta = document.getElementById('rentLocalidadHasta').value;
+    const localidadElegida = document.getElementById('rentLocalidad').value;
     const clientesPorId = {};
     cache.clientes.forEach(c => { clientesPorId[c.id] = c; });
-    const idsPermitidos = new Set(cache.clientes.map(c => c.id));
+    const idsPermitidos = new Set(
+      (localidadElegida ? cache.clientes.filter(c => (c.localidad || '') === localidadElegida) : cache.clientes)
+        .map(c => c.id)
+    );
 
     const ventasFiltradas = cache.ventas.filter(v => {
       if (!v.articulo_id || !idsPermitidos.has(v.cliente_id)) return false;
