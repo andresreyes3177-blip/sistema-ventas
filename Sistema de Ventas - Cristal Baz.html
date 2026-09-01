@@ -1322,7 +1322,7 @@
         <p class="hint">Si en Localidad dejaste "Todas", compara todas las localidades entre sí; si elegís una localidad específica, muestra solo esa.</p>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Localidad</th><th>Monto facturado</th><th>% del total</th><th>Clientes que compraron</th><th>% penetración</th></tr></thead>
+            <thead><tr><th>Localidad</th><th>Monto facturado</th><th>% del total</th><th>Clientes que compraron</th><th>% penetración</th><th>Ópticas cargadas sin comprar aún</th></tr></thead>
             <tbody id="vtaAnalisisLocalidadTbody"></tbody>
           </table>
         </div>
@@ -7457,6 +7457,16 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
     compradoresPorLocalidad[loc].add(v.cliente_id);
   });
 
+  // Ópticas cargadas en la zona que nunca nos compraron (estado_comercial
+  // 'prospecto') — independiente del rango de fechas elegido arriba, porque
+  // un prospecto nunca tuvo una venta en ningún período.
+  const prospectosPorLocalidad = {};
+  clientesRelevantes.forEach(c => {
+    if (c.estado_comercial !== 'prospecto') return;
+    const loc = c.localidad || 'Sin localidad';
+    prospectosPorLocalidad[loc] = (prospectosPorLocalidad[loc] || 0) + 1;
+  });
+
   const totalMonto = Object.values(montoPorLocalidad).reduce((s, m) => s + m, 0);
   const filas = Object.keys(clientesPorLocalidad).map(loc => ({
     localidad: loc,
@@ -7464,6 +7474,7 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
     porcentaje: totalMonto > 0 ? ((montoPorLocalidad[loc] || 0) / totalMonto) * 100 : 0,
     compradores: (compradoresPorLocalidad[loc] || new Set()).size,
     totalClientes: clientesPorLocalidad[loc].size,
+    prospectos: prospectosPorLocalidad[loc] || 0,
   })).sort((a, b) => b.monto - a.monto);
 
   // Con una sola localidad elegida, la torta de "Reparto por Localidad" da
@@ -7479,8 +7490,9 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
       <td>${f.porcentaje.toFixed(1)}%</td>
       <td>${f.compradores} de ${f.totalClientes}</td>
       <td>${f.totalClientes > 0 ? ((f.compradores / f.totalClientes) * 100).toFixed(0) : 0}%</td>
+      <td>${f.prospectos}</td>
     </tr>
-  `).join('') || '<tr><td colspan="5" class="hint">No hay clientes con localidad cargada.</td></tr>';
+  `).join('') || '<tr><td colspan="6" class="hint">No hay clientes con localidad cargada.</td></tr>';
 
   // Torta de penetración: sobre el total de clientes de la selección (todas
   // las localidades, o solo la elegida), qué porcentaje compró en este
