@@ -7457,12 +7457,16 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
     compradoresPorLocalidad[loc].add(v.cliente_id);
   });
 
-  // Ópticas cargadas en la zona que nunca nos compraron (estado_comercial
-  // 'prospecto') — independiente del rango de fechas elegido arriba, porque
-  // un prospecto nunca tuvo una venta en ningún período.
+  // Ópticas cargadas en la zona que nunca nos compraron NADA — a propósito
+  // no se usa el campo "Estado comercial" (que es una etiqueta manual que
+  // no siempre se completa al cargar un cliente y por defecto queda en
+  // "Cliente"), sino las ventas reales: si el cliente no aparece ni una vez
+  // en todo el historial (cache.ventas, sin acotar por fecha ni filtro),
+  // nunca compró. Por eso tampoco depende del rango Desde/Hasta de arriba.
+  const clientesConVentaAlgunaVez = new Set(cache.ventas.map(v => v.cliente_id));
   const prospectosPorLocalidad = {};
   clientesRelevantes.forEach(c => {
-    if (c.estado_comercial !== 'prospecto') return;
+    if (clientesConVentaAlgunaVez.has(c.id)) return;
     const loc = c.localidad || 'Sin localidad';
     prospectosPorLocalidad[loc] = (prospectosPorLocalidad[loc] || 0) + 1;
   });
