@@ -1318,7 +1318,10 @@
       </div>
 
       <div id="vtaAnalisisLocalidadWrap" style="display:none;">
-        <h4>📍 Consumo por Localidad</h4>
+        <div class="field-row" style="align-items:center; justify-content:space-between;">
+          <h4 style="margin:0;">📍 Consumo por Localidad</h4>
+          <button type="button" class="btn-secondary" id="btnVtaAnalisisLocalidadPdf">🖨️ Descargar PDF / Imprimir</button>
+        </div>
         <p class="hint">Si en Localidad dejaste "Todas", compara todas las localidades entre sí; si elegís una localidad específica, muestra solo esa.</p>
         <div class="table-scroll">
           <table>
@@ -1339,7 +1342,13 @@
           </div>
         </div>
 
-        <div class="card" style="max-width:340px; margin:16px auto 0;">
+        <div class="card" style="margin-top:16px;">
+          <h4>📈 Últimos 3 meses (monto y clientes que compraron)</h4>
+          <p class="hint">Independiente del rango Desde/Hasta de arriba — siempre son los últimos 3 meses completos, para esta misma selección de Localidad.</p>
+          <div class="chart-box"><canvas id="chartAnalisisLocalidad3Meses"></canvas></div>
+        </div>
+
+        <div class="card" style="max-width:420px; margin:16px auto 0;">
           <h4 id="vtaAnalisisPenetracionTitulo">% de clientes que compran</h4>
           <div class="chart-box"><canvas id="chartAnalisisPenetracion"></canvas></div>
           <div class="dash-leyenda-subrubro" id="vtaAnalisisPenetracionLeyenda"></div>
@@ -7409,6 +7418,86 @@ document.getElementById('btnVtaAnalisisGenerar').addEventListener('click', async
   renderChartAnalisisSucursal(calcularVentasFiltradasAnalisis(cache.clientesTodos));
 });
 
+// Gráfico combinado (barras de monto + línea de cantidad de clientes que
+// compraron) de los últimos 3 meses completos, para la misma selección de
+// Localidad del Dashboard — a propósito usa cache.ventas (historial
+// completo) en vez de ventasFiltradas, para que no dependa del rango
+// Desde/Hasta elegido arriba: siempre son los últimos 3 meses reales.
+let vtaAnalisisLocalidad3MesesDatos = [];
+function renderChartAnalisisLocalidad3Meses(clientesRelevantes) {
+  const idsRelevantes = new Set(clientesRelevantes.map(c => c.id));
+  const claves = obtenerUltimos3MesesClaves().slice().reverse(); // más viejo → más nuevo
+  const montoPorMes = {};
+  const clientesPorMes = {};
+  claves.forEach(c => { montoPorMes[c] = 0; clientesPorMes[c] = new Set(); });
+  cache.ventas.forEach(v => {
+    if (!idsRelevantes.has(v.cliente_id)) return;
+    const clave = claveDeFecha(v.fecha);
+    if (!(clave in montoPorMes)) return;
+    montoPorMes[clave] += Number(v.monto || 0);
+    clientesPorMes[clave].add(v.cliente_id);
+  });
+  vtaAnalisisLocalidad3MesesDatos = claves.map(c => ({ mes: nombreMesClave(c), monto: montoPorMes[c], clientes: clientesPorMes[c].size }));
+
+  destruirChart('chartAnalisisLocalidad3Meses');
+  vtaChartsInstancias.chartAnalisisLocalidad3Meses = new Chart(document.getElementById('chartAnalisisLocalidad3Meses'), {
+    type: 'bar',
+    data: {
+      labels: claves.map(nombreMesClave),
+      datasets: [
+        { type: 'bar', label: 'Monto facturado', data: claves.map(c => montoPorMes[c]), backgroundColor: '#e8543c', yAxisID: 'yMonto' },
+        { type: 'line', label: 'Clientes que compraron', data: claves.map(c => clientesPorMes[c].size), borderColor: '#1b2c3a', backgroundColor: '#1b2c3a', yAxisID: 'yClientes', tension: 0.25 },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        tooltip: { callbacks: { label: (ctx) => ctx.dataset.yAxisID === 'yMonto' ? `${ctx.dataset.label}: ${FORMATO_PESOS(ctx.parsed.y)}` : `${ctx.dataset.label}: ${ctx.parsed.y}` } },
+      },
+      scales: {
+        yMonto: { type: 'linear', position: 'left', beginAtZero: true, ticks: { callback: FORMATO_PESOS } },
+        yClientes: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { precision: 0 } },
+      },
+    },
+  });
+}
+
+// Arma una versión prolija (tablas + gráficos como imagen) de todo el
+// Dashboard de Localidad y la manda a imprimirHtml() — misma función que ya
+// usa Cross-sell para "Exportar/imprimir", así el usuario puede elegir
+// imprimir de verdad o "Guardar como PDF" desde el diálogo del navegador.
+document.getElementById('btnVtaAnalisisLocalidadPdf').addEventListener('click', () => {
+  const localidadTitulo = document.getElementById('vtaResumenLocalidad').value || 'Todas las localidades';
+  const tablaLocalidad = document.getElementById('vtaAnalisisLocalidadTbody').closest('table').outerHTML;
+  const tablaNoCompran = document.getElementById('vtaAnalisisNoComprantTbody').closest('table').outerHTML;
+  const penetracionLeyenda = document.getElementById('vtaAnalisisPenetracionLeyenda').innerHTML;
+  const localidadLeyenda = document.getElementById('vtaAnalisisLocalidadLeyenda').innerHTML;
+
+  const repartoVisible = document.getElementById('vtaAnalisisRepartoCard').style.display !== 'none';
+  const imgTorta = (repartoVisible && vtaChartsInstancias.chartAnalisisLocalidadTorta)
+    ? `<h2>Reparto por Localidad (%)</h2><img src="${vtaChartsInstancias.chartAnalisisLocalidadTorta.toBase64Image()}" style="max-width:420px;"><div>${localidadLeyenda}</div>` : '';
+  const imgBarras = vtaChartsInstancias.chartAnalisisLocalidadBarras
+    ? `<h2>Monto por Localidad</h2><img src="${vtaChartsInstancias.chartAnalisisLocalidadBarras.toBase64Image()}" style="max-width:100%;">` : '';
+  const img3Meses = vtaChartsInstancias.chartAnalisisLocalidad3Meses
+    ? `<h2>Últimos 3 meses (monto y clientes que compraron)</h2><img src="${vtaChartsInstancias.chartAnalisisLocalidad3Meses.toBase64Image()}" style="max-width:100%;">` : '';
+  const imgPenetracion = vtaChartsInstancias.chartAnalisisPenetracion
+    ? `<h2>% de clientes que compran</h2><img src="${vtaChartsInstancias.chartAnalisisPenetracion.toBase64Image()}" style="max-width:340px;"><div>${penetracionLeyenda}</div>` : '';
+
+  const cuerpo = `
+    <h2>Consumo por Localidad</h2>
+    ${tablaLocalidad}
+    ${imgBarras}
+    ${imgTorta}
+    ${img3Meses}
+    ${imgPenetracion}
+    <h2>Clientes que no compran (en esta selección)</h2>
+    ${tablaNoCompran}
+  `;
+  imprimirHtml(`Dashboard de Localidad — ${localidadTitulo}`, cuerpo);
+});
+
 // "Ver por Localidad": para cada localidad con clientes cargados (respeta
 // la sucursal activa, igual que el resto de la pantalla) — incluidas las
 // que no tuvieron ninguna venta con estos filtros, para que se note fácil
@@ -7499,19 +7588,27 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
   `).join('') || '<tr><td colspan="6" class="hint">No hay clientes con localidad cargada.</td></tr>';
 
   // Torta de penetración: sobre el total de clientes de la selección (todas
-  // las localidades, o solo la elegida), qué porcentaje compró en este
-  // período/filtro contra el que no compró nada.
+  // las localidades, o solo la elegida), en 3 categorías — nos compran en
+  // este período/filtro, nos compraron alguna vez pero no en este período
+  // (clientes que dejaron de comprar, o simplemente no compraron en el
+  // rango de fechas elegido arriba), y los que nunca nos compraron nada
+  // (reutiliza clientesConVentaAlgunaVez, calculado más arriba sobre el
+  // historial completo — no depende del rango Desde/Hasta).
   const totalClientesSeleccion = clientesRelevantes.length;
   const totalCompradoresSeleccion = new Set(ventasFiltradas.map(v => v.cliente_id)).size;
-  const totalNoCompranSeleccion = Math.max(0, totalClientesSeleccion - totalCompradoresSeleccion);
+  const totalNuncaCompraronSeleccion = clientesRelevantes.filter(c => !clientesConVentaAlgunaVez.has(c.id)).length;
+  const totalCompraronAntesNoAhora = Math.max(0, totalClientesSeleccion - totalCompradoresSeleccion - totalNuncaCompraronSeleccion);
   document.getElementById('vtaAnalisisPenetracionTitulo').textContent =
     `% de clientes que compran${localidadSeleccionada ? ' — ' + localidadSeleccionada : ' (todas las localidades)'}`;
+  const PENETRACION_LABELS = ['Compran ahora', 'Compraron antes, no ahora', 'Nunca compraron'];
+  const PENETRACION_DATOS = [totalCompradoresSeleccion, totalCompraronAntesNoAhora, totalNuncaCompraronSeleccion];
+  const PENETRACION_COLORES = ['#2e7d32', '#f0a500', '#e8543c'];
   destruirChart('chartAnalisisPenetracion');
   vtaChartsInstancias.chartAnalisisPenetracion = new Chart(document.getElementById('chartAnalisisPenetracion'), {
     type: 'doughnut',
     data: {
-      labels: ['Nos compran', 'No nos compran'],
-      datasets: [{ data: [totalCompradoresSeleccion, totalNoCompranSeleccion], backgroundColor: ['#2e7d32', '#e8543c'] }],
+      labels: PENETRACION_LABELS,
+      datasets: [{ data: PENETRACION_DATOS, backgroundColor: PENETRACION_COLORES }],
     },
     options: {
       responsive: true,
@@ -7522,10 +7619,13 @@ document.getElementById('btnVtaAnalisisPorLocalidad').addEventListener('click', 
       },
     },
   });
-  document.getElementById('vtaAnalisisPenetracionLeyenda').innerHTML = totalClientesSeleccion > 0 ? `
-    <div class="dash-leyenda-item"><span class="dash-leyenda-color" style="background:#2e7d32"></span>Nos compran: ${totalCompradoresSeleccion} (${((totalCompradoresSeleccion / totalClientesSeleccion) * 100).toFixed(0)}%)</div>
-    <div class="dash-leyenda-item"><span class="dash-leyenda-color" style="background:#e8543c"></span>No nos compran: ${totalNoCompranSeleccion} (${((totalNoCompranSeleccion / totalClientesSeleccion) * 100).toFixed(0)}%)</div>
-  ` : '<span class="hint">No hay clientes cargados en esta selección.</span>';
+  document.getElementById('vtaAnalisisPenetracionLeyenda').innerHTML = totalClientesSeleccion > 0
+    ? PENETRACION_LABELS.map((label, i) => `
+        <div class="dash-leyenda-item"><span class="dash-leyenda-color" style="background:${PENETRACION_COLORES[i]}"></span>${label}: ${PENETRACION_DATOS[i]} (${((PENETRACION_DATOS[i] / totalClientesSeleccion) * 100).toFixed(0)}%)</div>
+      `).join('')
+    : '<span class="hint">No hay clientes cargados en esta selección.</span>';
+
+  renderChartAnalisisLocalidad3Meses(clientesRelevantes);
 
   destruirChart('chartAnalisisLocalidadTorta');
   vtaChartsInstancias.chartAnalisisLocalidadTorta = new Chart(document.getElementById('chartAnalisisLocalidadTorta'), {
