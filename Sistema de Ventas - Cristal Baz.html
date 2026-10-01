@@ -4116,10 +4116,16 @@ function calcularAlertasResumenMes() {
   const mesInput = document.getElementById('rmMes').value; // "YYYY-MM"
   const tipo = document.getElementById('rmTipo').value; // 'mensual' | 'parcial'
   const localidadFiltro = document.getElementById('rmLocalidad').value;
-  if (!mesInput) return { alertas: [], analizadosList: [], baseMeses: ['', '', ''] };
+  if (!mesInput) return { alertas: [], analizadosList: [], clientesNuevos: [], baseMeses: ['', '', ''], mesesIntermedios: [], clientesFiltrados: [], totalVentasTodos: 0 };
 
   const baseMeses = mesesTrimestreBaseDe(mesInput);
   const [baseMes1, baseMes2, baseMes3] = baseMeses;
+  // Meses que quedan ENTRE el trimestre base y el mes analizado (ej: si se
+  // analiza Septiembre, base Abr-Jun → intermedios Jul y Ago). Se muestran
+  // solo como referencia, no entran en el promedio.
+  const mesesIntermedios = [];
+  for (let k = restarMesesClave(baseMes3, -1); k < mesInput; k = restarMesesClave(k, -1)) mesesIntermedios.push(k);
+  const ventasIntermedias = (meses) => mesesIntermedios.map(k => Number((meses[k] || {}).total || 0));
 
   let clientesFiltrados = cache.clientes;
   if (localidadFiltro) clientesFiltrados = clientesFiltrados.filter(c => c.localidad === localidadFiltro);
@@ -4139,7 +4145,7 @@ function calcularAlertasResumenMes() {
     const ventasMes = Number((meses[mesInput] || {}).total || 0);
     const umbral = tipo === 'parcial' ? (promedio / 2) * 0.80 : promedio * 0.80;
     const caidaPct = Math.round((1 - ventasMes / promedio) * 100);
-    analizadosList.push({ cliente: c, v1, v2, v3, promedio, ventasMes, caidaPct, enAlerta: ventasMes < umbral });
+    analizadosList.push({ cliente: c, v1, v2, v3, vInter: ventasIntermedias(meses), promedio, ventasMes, caidaPct, enAlerta: ventasMes < umbral });
   });
 
   const alertas = analizadosList.filter(a => a.enAlerta).sort((a, b) => b.caidaPct - a.caidaPct);
@@ -4155,7 +4161,7 @@ function calcularAlertasResumenMes() {
     if (idsAnalizados.has(c.id)) return;
     const meses = cache.consumoPorClienteMes[c.id] || {};
     const ventasMes = Number((meses[mesInput] || {}).total || 0);
-    if (ventasMes > 0) clientesNuevos.push({ cliente: c, v1: 0, v2: 0, v3: 0, promedio: null, ventasMes, caidaPct: null, enAlerta: false, esNuevo: true });
+    if (ventasMes > 0) clientesNuevos.push({ cliente: c, v1: 0, v2: 0, v3: 0, vInter: ventasIntermedias(meses), promedio: null, ventasMes, caidaPct: null, enAlerta: false, esNuevo: true });
   });
   clientesNuevos.sort((a, b) => b.ventasMes - a.ventasMes);
 
@@ -4168,7 +4174,7 @@ function calcularAlertasResumenMes() {
     return s + Number((meses[mesInput] || {}).total || 0);
   }, 0);
 
-  return { alertas, analizadosList, clientesNuevos, baseMeses, clientesFiltrados, totalVentasTodos };
+  return { alertas, analizadosList, clientesNuevos, baseMeses, mesesIntermedios, clientesFiltrados, totalVentasTodos };
 }
 
 // Formatea un porcentaje respecto a 100 como "X% arriba" / "X% abajo" — más
@@ -4213,6 +4219,13 @@ function calcularAcumuladoAnual(clientesFiltrados, mesInput) {
   return { promedioAnioAnteriorCompleto, promedioAnioActualAcumulado, pctAcumuladoVsAnioAnterior, mesesConVentaAnioAnterior: mesesConVentaAnioAnterior.length, mesesConVentaAnioActual: mesesConVentaAnioActual.length };
 }
 
+const pesosRm = v => '$' + Math.round(v).toLocaleString('es-AR');
+function celdasIntermediasHtml(a) { return (a.vInter || []).map(v => `<td>${pesosRm(v)}</td>`).join(''); }
+function totalesIntermedios(lista) {
+  const n = lista.length ? (lista[0].vInter || []).length : 0;
+  return Array.from({ length: n }, (_, i) => lista.reduce((s, a) => s + ((a.vInter || [])[i] || 0), 0));
+}
+
 function filaTotalesHtml(lista) {
   return `<tr class="fila-totales">
     <td>Total</td>
@@ -4220,6 +4233,7 @@ function filaTotalesHtml(lista) {
     <td>$${Math.round(sumarFilas(lista, 'v2')).toLocaleString('es-AR')}</td>
     <td>$${Math.round(sumarFilas(lista, 'v3')).toLocaleString('es-AR')}</td>
     <td>$${Math.round(sumarFilas(lista, 'promedio')).toLocaleString('es-AR')}</td>
+    ${totalesIntermedios(lista).map(v => `<td>${pesosRm(v)}</td>`).join('')}
     <td>$${Math.round(sumarFilas(lista, 'ventasMes')).toLocaleString('es-AR')}</td>
     <td></td>
   </tr>`;
@@ -4240,6 +4254,7 @@ function filaClienteHtml(a) {
       <td>—</td>
       <td>—</td>
       <td>—</td>
+      ${celdasIntermediasHtml(a)}
       <td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td>
       <td>Sin promedio (nuevo)</td>
     </tr>`;
@@ -4253,13 +4268,16 @@ function filaClienteHtml(a) {
     <td>$${Math.round(a.v2).toLocaleString('es-AR')}</td>
     <td>$${Math.round(a.v3).toLocaleString('es-AR')}</td>
     <td>$${Math.round(a.promedio).toLocaleString('es-AR')}</td>
+    ${celdasIntermediasHtml(a)}
     <td>$${Math.round(a.ventasMes).toLocaleString('es-AR')}</td>
     <td>${textoVsPromedio}</td>
   </tr>`;
 }
 
 function renderResumenMes() {
-  const { alertas, analizadosList, clientesNuevos, baseMeses, clientesFiltrados, totalVentasTodos } = calcularAlertasResumenMes();
+  const { alertas, analizadosList, clientesNuevos, baseMeses, mesesIntermedios, clientesFiltrados, totalVentasTodos } = calcularAlertasResumenMes();
+  const nombresIntermedios = mesesIntermedios.map(nombreMesClave);
+  const thIntermedios = nombresIntermedios.map(n => `<th>${n}</th>`).join('');
   const mesElegido = document.getElementById('rmMes').value;
   const [nombreBase1, nombreBase2, nombreBase3] = baseMeses.map(m => m ? nombreMesClave(m) : '');
   const nombreMesElegido = mesElegido ? nombreMesClave(mesElegido) : '';
@@ -4275,7 +4293,7 @@ function renderResumenMes() {
   const acumuladoAnual = mesElegido ? calcularAcumuladoAnual(clientesFiltrados, mesElegido) : { pctAcumuladoVsAnioAnterior: null };
 
   document.getElementById('rmTrimestreHint').textContent = mesElegido
-    ? `Promedio trimestral base: ${nombreBase1}, ${nombreBase2} y ${nombreBase3} — se evalúa contra ${nombreMesElegido}. Este mismo trimestre base se usa fijo para los 3 meses del trimestre siguiente.`
+    ? `Promedio trimestral base: ${nombreBase1}, ${nombreBase2} y ${nombreBase3} — se evalúa contra ${nombreMesElegido}.${nombresIntermedios.length ? ` También se muestran ${nombresIntermedios.join(' y ')} como referencia (no entran en el promedio).` : ''} Este mismo trimestre base se usa fijo para los 3 meses del trimestre siguiente.`
     : '';
   document.getElementById('rmStatAnalizados').textContent = analizadosList.length;
   document.getElementById('rmStatNuevos').textContent = clientesNuevos.length;
@@ -4313,7 +4331,7 @@ function renderResumenMes() {
         <h3>📍 ${loc} <span class="hint">(${porLocalidad[loc].length} cliente(s)${etiqueta})</span></h3>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>Cliente</th><th>${nombreBase1}</th><th>${nombreBase2}</th><th>${nombreBase3}</th><th>Promedio (trim.)</th><th>${nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>${nombreBase1}</th><th>${nombreBase2}</th><th>${nombreBase3}</th><th>Promedio (trim.)</th>${thIntermedios}<th>${nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
             <tbody>${porLocalidad[loc].map(filaClienteHtml).join('')}</tbody>
             <tfoot>${filaTotalesHtml(porLocalidad[loc])}</tfoot>
           </table>
@@ -4339,7 +4357,7 @@ function renderResumenMes() {
 
   rmUltimo = {
     mes: mesElegido, tipo: document.getElementById('rmTipo').value, localidadFiltro: document.getElementById('rmLocalidad').value,
-    alertas, analizadosList, clientesNuevos, nombreBase1, nombreBase2, nombreBase3, nombreMesElegido, porLocalidad, localidadesOrdenadas,
+    alertas, analizadosList, clientesNuevos, nombreBase1, nombreBase2, nombreBase3, nombresIntermedios, nombreMesElegido, porLocalidad, localidadesOrdenadas,
     porLocalidadTodos, localidadesOrdenadasTodos,
     totalVentasMes, totalPromedio, pctVsPromedioGeneral, acumuladoAnual,
   };
@@ -4368,7 +4386,8 @@ document.getElementById('btnRmExcel').addEventListener('click', async () => {
   if (!g.lista.length) { alert(`No hay clientes (${g.etiqueta}) para exportar con los filtros actuales.`); return; }
   const d = rmUltimo;
 
-  const encabezados = ['Cliente', d.nombreBase1, d.nombreBase2, d.nombreBase3, 'Promedio (trimestral)', d.nombreMesElegido, 'vs. Promedio'];
+  const encabezados = ['Cliente', d.nombreBase1, d.nombreBase2, d.nombreBase3, 'Promedio (trimestral)', ...d.nombresIntermedios, d.nombreMesElegido, 'vs. Promedio'];
+  const nCols = encabezados.length;
   const ROJO_ALERTA = 'FFFF0000';
   const GRIS_ENCABEZADO = 'FF1B2C3A';
   const GRIS_CLARO = 'FFF2F2F2';
@@ -4377,19 +4396,19 @@ document.getElementById('btnRmExcel').addEventListener('click', async () => {
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Resumen de Mes');
-  ws.columns = [{ width: 34 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 18 }, { width: 16 }, { width: 16 }];
+  ws.columns = encabezados.map((_, i) => ({ width: i === 0 ? 34 : (i === 4 ? 18 : 16) }));
 
   const filaTitulo = ws.addRow([`${d.tipo === 'parcial' ? 'Análisis parcial del mes' : 'Informe mensual de ventas'} — ${d.nombreMesElegido} — ${g.etiqueta}`]);
   filaTitulo.font = { bold: true, size: 13 };
-  ws.mergeCells(filaTitulo.number, 1, filaTitulo.number, 7);
+  ws.mergeCells(filaTitulo.number, 1, filaTitulo.number, nCols);
   const filaSub = ws.addRow([`Promedio trimestral base: ${d.nombreBase1}, ${d.nombreBase2} y ${d.nombreBase3}`]);
   filaSub.font = { italic: true, color: { argb: 'FF666666' } };
-  ws.mergeCells(filaSub.number, 1, filaSub.number, 7);
+  ws.mergeCells(filaSub.number, 1, filaSub.number, nCols);
   ws.addRow([]);
 
   g.localidadesOrdenadas.forEach(loc => {
     const filaLoc = ws.addRow([`📍 ${loc} (${g.porLocalidad[loc].length} cliente(s))`]);
-    ws.mergeCells(filaLoc.number, 1, filaLoc.number, 7);
+    ws.mergeCells(filaLoc.number, 1, filaLoc.number, nCols);
     filaLoc.eachCell(c => { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GRIS_ENCABEZADO } }; });
 
     const filaHead = ws.addRow(encabezados);
@@ -4398,19 +4417,19 @@ document.getElementById('btnRmExcel').addEventListener('click', async () => {
     g.porLocalidad[loc].forEach(a => {
       const NUEVO_AZUL = 'FFDCEBF7';
       if (a.esNuevo) {
-        const fila = ws.addRow([`🆕 ${a.cliente.razon_social}`, '—', '—', '—', '—', Math.round(a.ventasMes), 'Sin promedio (nuevo)']);
+        const fila = ws.addRow([`🆕 ${a.cliente.razon_social}`, '—', '—', '—', '—', ...(a.vInter || []).map(Math.round), Math.round(a.ventasMes), 'Sin promedio (nuevo)']);
         fila.eachCell(c => { c.border = bordeCompleto; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NUEVO_AZUL } }; });
         return;
       }
       const textoVsPromedio = a.caidaPct >= 0 ? `${a.caidaPct}% abajo` : `${Math.abs(a.caidaPct)}% arriba`;
-      const fila = ws.addRow([a.cliente.razon_social, Math.round(a.v1), Math.round(a.v2), Math.round(a.v3), Math.round(a.promedio), Math.round(a.ventasMes), textoVsPromedio]);
+      const fila = ws.addRow([a.cliente.razon_social, Math.round(a.v1), Math.round(a.v2), Math.round(a.v3), Math.round(a.promedio), ...(a.vInter || []).map(Math.round), Math.round(a.ventasMes), textoVsPromedio]);
       fila.eachCell(c => {
         c.border = bordeCompleto;
         if (a.enAlerta) { c.font = { bold: true, color: { argb: 'FFFFFFFF' } }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: ROJO_ALERTA } }; }
       });
     });
 
-    const filaTotal = ws.addRow(['Total', Math.round(sumarFilas(g.porLocalidad[loc], 'v1')), Math.round(sumarFilas(g.porLocalidad[loc], 'v2')), Math.round(sumarFilas(g.porLocalidad[loc], 'v3')), Math.round(sumarFilas(g.porLocalidad[loc], 'promedio')), Math.round(sumarFilas(g.porLocalidad[loc], 'ventasMes')), '']);
+    const filaTotal = ws.addRow(['Total', Math.round(sumarFilas(g.porLocalidad[loc], 'v1')), Math.round(sumarFilas(g.porLocalidad[loc], 'v2')), Math.round(sumarFilas(g.porLocalidad[loc], 'v3')), Math.round(sumarFilas(g.porLocalidad[loc], 'promedio')), ...totalesIntermedios(g.porLocalidad[loc]).map(Math.round), Math.round(sumarFilas(g.porLocalidad[loc], 'ventasMes')), '']);
     filaTotal.eachCell(c => { c.font = { bold: true }; c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GRIS_CLARO } }; c.border = bordeCompleto; });
     ws.addRow([]);
   });
@@ -4443,7 +4462,7 @@ document.getElementById('btnRmImprimir').addEventListener('click', () => {
       <div class="bloque-localidad">
         <h2>📍 ${loc} (${g.porLocalidad[loc].length} cliente(s))</h2>
         <table>
-          <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th><th>${d.nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>${d.nombreBase1}</th><th>${d.nombreBase2}</th><th>${d.nombreBase3}</th><th>Promedio (trim.)</th>${d.nombresIntermedios.map(n => `<th>${n}</th>`).join('')}<th>${d.nombreMesElegido}</th><th>vs. Promedio</th></tr></thead>
           <tbody>${g.porLocalidad[loc].map(filaClienteHtml).join('')}${filaTotalesHtml(g.porLocalidad[loc])}</tbody>
         </table>
       </div>`).join('')}`;
