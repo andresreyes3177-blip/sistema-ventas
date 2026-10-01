@@ -621,6 +621,16 @@
     </div>
 
     <div class="card">
+      <h2>🏘️ Agregar localidad nueva</h2>
+      <p class="hint">Para dar de alta una localidad que todavía no tiene clientes (por ejemplo, una zona a prospectar). Aparece enseguida en todos los desplegables de Localidad del sistema y en el Panorama de abajo.</p>
+      <div class="field-row">
+        <div class="field"><label>Nombre de la localidad</label><input id="locNuevaNombre" placeholder="Ej: GENERAL VILLEGAS"></div>
+        <div class="field" style="align-self:flex-end;"><button type="button" class="btn-primary" id="btnLocAgregar">Agregar localidad</button></div>
+      </div>
+      <div id="locPropiasLista" class="hint" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
       <h2>Panorama por Localidad</h2>
       <p class="hint">Ordenado de la Localidad que hace más tiempo no visitás a la más reciente — para no repetir siempre las mismas y dejar otras de lado. Las localidades nunca visitadas aparecen primero.</p>
       <div class="table-scroll">
@@ -1943,7 +1953,7 @@ document.getElementById('sessionBuildVersion').textContent = BUILD_VERSION;
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let currentProfile = null;
-let cache = { clientes: [], clientesTodos: [], tags: [], articulos: [], subrubrosRelacionados: [], clienteTagsPorCliente: {}, sucursales: [], profiles: [], profileSucursales: [], misSucursales: [], campanias: [], ventas: [], consumoPorClienteMes: {}, ultimoContactoPorCliente: {}, configuracionAlertas: null, visitasLocalidad: [], metasProducto: [], costosPorArticulo: {}, cotizacionesDolar: [] };
+let cache = { clientes: [], clientesTodos: [], tags: [], articulos: [], subrubrosRelacionados: [], clienteTagsPorCliente: {}, sucursales: [], profiles: [], profileSucursales: [], misSucursales: [], campanias: [], ventas: [], consumoPorClienteMes: {}, ultimoContactoPorCliente: {}, configuracionAlertas: null, visitasLocalidad: [], localidadesPropias: [], metasProducto: [], costosPorArticulo: {}, cotizacionesDolar: [] };
 let sucursalActivaId = localStorage.getItem('sv_sucursal_activa') || '__todas__';
 let modalClienteId = null;
 let intOfrecidosSeleccionados = []; // artículos elegidos para "¿Qué se le ofreció?" del contacto en curso — [{id, nombre, subrubro}]
@@ -2134,6 +2144,9 @@ const DB_RAW = {
   },
 
   // Visitas a Localidades
+  listLocalidadesPropias: async () => { const { data, error } = await sb.from('localidades_ventas').select('*').order('nombre'); if (error) throw error; return data; },
+  createLocalidadPropia: async (payload) => { const { error } = await sb.from('localidades_ventas').insert(payload); if (error) throw error; },
+  deleteLocalidadPropia: async (id) => { const { error } = await sb.from('localidades_ventas').delete().eq('id', id); if (error) throw error; },
   listVisitasLocalidad: async () => { const { data, error } = await sb.from('visitas_localidad').select('*').order('fecha', { ascending: false }); if (error) throw error; return data; },
   createVisitaLocalidad: async (payload) => { const { error } = await sb.from('visitas_localidad').insert(payload); if (error) throw error; },
   deleteVisitaLocalidad: async (id) => { const { error } = await sb.from('visitas_localidad').delete().eq('id', id); if (error) throw error; },
@@ -2608,10 +2621,27 @@ function calcularConsumo(clienteId) {
   return { consumoMes, promedio, porcentaje, total3Meses, detalleUltimos3Meses };
 }
 
+// Localidades que existen en el sistema: las de los clientes + las dadas de
+// alta a mano en "Localidades propias" (tabla localidades_ventas), aunque
+// todavía no tengan ningún cliente asignado.
+function localidadesDisponibles() {
+  return [...new Set([...cache.clientes.map(c => c.localidad).filter(Boolean), ...cache.localidadesPropias.map(l => l.nombre)])].sort();
+}
+
+async function refreshLocalidadesPropias() {
+  try {
+    cache.localidadesPropias = await DB.listLocalidadesPropias();
+  } catch (e) {
+    // Si todavía no se corrió la migración 32, el sistema sigue funcionando igual.
+    console.error('No se pudieron leer las localidades propias (¿falta la migración 32?)', e);
+    cache.localidadesPropias = [];
+  }
+}
+
 function refreshFiltroLocalidad() {
   const sel = document.getElementById('filtroLocalidad');
   const actual = sel.value;
-  const localidades = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))].sort();
+  const localidades = localidadesDisponibles().sort();
   sel.innerHTML = '<option value="">Todas</option>' + localidades.map(l => `<option value="${l}">${l}</option>`).join('');
   if (localidades.includes(actual)) sel.value = actual;
 }
@@ -2794,7 +2824,7 @@ function poblarSelectLocalidadEn(selectId, valorActual) {
   // Junta las localidades del maestro de Logística con las que ya se usaron
   // en Clientes acá — así el desplegable no queda vacío si Logística no
   // tiene el dato, o si el cliente cargó una localidad que Logística no tiene.
-  const nombres = [...new Set([...localidadesLogistica, ...cache.clientes.map(c => c.localidad).filter(Boolean)])].sort();
+  const nombres = [...new Set([...localidadesLogistica, ...localidadesDisponibles()])].sort();
   if (valorActual && !nombres.includes(valorActual)) nombres.unshift(valorActual);
   sel.innerHTML = '<option value="">Sin definir</option>' +
     nombres.map(n => `<option value="${n}">${n}</option>`).join('') +
@@ -4014,7 +4044,7 @@ document.getElementById('rentSubrubro').addEventListener('change', () => { docum
 // Rubro > Subrubro > Artículo.
 function refreshRentFiltroLocalidad() {
   const actual = document.getElementById('rentLocalidad').value;
-  const localidades = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))].sort();
+  const localidades = localidadesDisponibles().sort();
   document.getElementById('rentLocalidad').innerHTML = '<option value="">Todas</option>' + localidades.map(l => `<option value="${l}">${l}</option>`).join('');
   if (localidades.includes(actual)) document.getElementById('rentLocalidad').value = actual;
 }
@@ -4037,7 +4067,7 @@ document.querySelector('[data-tab="resumenmes"]').addEventListener('click', () =
     const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
     document.getElementById('rmMes').value = claveMes(mesAnterior.getFullYear(), mesAnterior.getMonth());
   }
-  const localidades = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))].sort();
+  const localidades = localidadesDisponibles().sort();
   const actualLocalidad = document.getElementById('rmLocalidad').value;
   document.getElementById('rmLocalidad').innerHTML = '<option value="">Todas</option>' + localidades.map(l => `<option value="${l}">${l}</option>`).join('');
   if (localidades.includes(actualLocalidad)) document.getElementById('rmLocalidad').value = actualLocalidad;
@@ -5293,7 +5323,7 @@ function diasEntreFechaYHoy(fechaISO) {
 }
 
 async function refreshVisitasTab() {
-  const localidades = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))].sort();
+  const localidades = localidadesDisponibles().sort();
   document.getElementById('vstLocalidad').innerHTML = '<option value="">Elegí una localidad...</option>' + localidades.map(l => `<option value="${l}">${l}</option>`).join('');
   if (!document.getElementById('vstFecha').value) {
     const hoy = new Date();
@@ -5304,6 +5334,7 @@ async function refreshVisitasTab() {
   cache.visitasLocalidad = await DB.listVisitasLocalidad();
   renderPanoramaVisitas(localidades);
   renderHistorialVisitas();
+  renderLocalidadesPropias();
 }
 
 function renderVstClientesLista() {
@@ -5313,7 +5344,7 @@ function renderVstClientesLista() {
   const clientesDeLocalidad = cache.clientes.filter(c => c.localidad === localidad).sort((a, b) => a.razon_social.localeCompare(b.razon_social));
   cont.innerHTML = clientesDeLocalidad.map(c => `
     <label class="checkbox-chip"><input type="checkbox" value="${c.id}" data-vst-cliente> ${c.razon_social}</label>
-  `).join('') || '<span class="hint">No hay clientes cargados en esta Localidad.</span>';
+  `).join('') || '<span class="hint">No hay clientes cargados en esta Localidad. Podés registrar la visita igual (por ejemplo, una recorrida de prospección).</span>';
 }
 document.getElementById('vstLocalidad').addEventListener('change', renderVstClientesLista);
 
@@ -5350,7 +5381,7 @@ function renderPanoramaVisitas(localidades) {
       <td>${f.diasSinVisitar === null ? '—' : f.diasSinVisitar}</td>
       <td>${f.visitasUltimos6Meses}</td>
     </tr>
-  `).join('') || '<tr><td colspan="5" class="hint">Todavía no hay localidades con clientes cargados.</td></tr>';
+  `).join('') || '<tr><td colspan="5" class="hint">Todavía no hay localidades cargadas.</td></tr>';
 }
 
 function filasVisitasFiltradas() {
@@ -5452,7 +5483,8 @@ document.getElementById('btnVstRegistrar').addEventListener('click', async () =>
   const clientesVisitados = Array.from(document.querySelectorAll('[data-vst-cliente]:checked')).map(chk => chk.value);
   if (!localidad) { alert('Elegí la Localidad.'); return; }
   if (!fecha) { alert('Elegí la fecha.'); return; }
-  if (!clientesVisitados.length) { alert('Tildá al menos una óptica visitada.'); return; }
+  const hayClientesEnLocalidad = cache.clientes.some(c => c.localidad === localidad);
+  if (hayClientesEnLocalidad && !clientesVisitados.length) { alert('Tildá al menos una óptica visitada.'); return; }
   try {
     await DB.createVisitaLocalidad({
       localidad,
@@ -5466,6 +5498,52 @@ document.getElementById('btnVstRegistrar').addEventListener('click', async () =>
     await refreshVisitasTab();
     alert('Visita registrada correctamente.');
   } catch (e) { reportError(e); }
+});
+
+function renderLocalidadesPropias() {
+  const cont = document.getElementById('locPropiasLista');
+  const esAdmin = currentProfile && currentProfile.role === 'admin';
+  if (!cache.localidadesPropias.length) { cont.innerHTML = 'Todavía no agregaste localidades a mano.'; return; }
+  cont.innerHTML = 'Agregadas a mano: ' + cache.localidadesPropias.map(l => {
+    const cantClientes = cache.clientes.filter(c => c.localidad === l.nombre).length;
+    const borrar = esAdmin ? ` <a href="#" data-loc-borrar="${l.id}" title="Quitar de la lista">✕</a>` : '';
+    return `<span class="checkbox-chip" style="display:inline-block; margin:2px 4px;">${l.nombre} (${cantClientes} cliente${cantClientes === 1 ? '' : 's'})${borrar}</span>`;
+  }).join('');
+}
+
+async function refrescarDesplegablesLocalidad() {
+  refreshFiltroLocalidad();
+  poblarSelectLocalidad(document.getElementById('clLocalidad').value === '__otra__' ? '' : document.getElementById('clLocalidad').value);
+  await refreshVisitasTab();
+}
+
+document.getElementById('btnLocAgregar').addEventListener('click', async () => {
+  const input = document.getElementById('locNuevaNombre');
+  const nombre = input.value.trim().replace(/\s+/g, ' ').toUpperCase();
+  if (!nombre) { alert('Escribí el nombre de la localidad.'); return; }
+  const existentes = [...localidadesLogistica, ...localidadesDisponibles()].map(n => (n || '').trim().toUpperCase());
+  if (existentes.includes(nombre)) { alert(`La localidad ${nombre} ya existe en el sistema. Buscala en el desplegable.`); return; }
+  try {
+    await DB.createLocalidadPropia({ nombre, creado_por: currentProfile ? currentProfile.id : null });
+    input.value = '';
+    await refreshLocalidadesPropias();
+    await refrescarDesplegablesLocalidad();
+    alert(`Localidad ${nombre} agregada.`);
+  } catch (e) { reportError(e); }
+});
+
+document.getElementById('locPropiasLista').addEventListener('click', async (e) => {
+  const link = e.target.closest('[data-loc-borrar]');
+  if (!link) return;
+  e.preventDefault();
+  const loc = cache.localidadesPropias.find(l => l.id === link.dataset.locBorrar);
+  if (!loc) return;
+  if (!confirm(`¿Quitar ${loc.nombre} de la lista? Los clientes y visitas que ya la tengan cargada no se modifican.`)) return;
+  try {
+    await DB.deleteLocalidadPropia(loc.id);
+    await refreshLocalidadesPropias();
+    await refrescarDesplegablesLocalidad();
+  } catch (err) { reportError(err); }
 });
 
 document.querySelector('[data-tab="visitas"]').addEventListener('click', refreshVisitasTab);
@@ -6477,7 +6555,7 @@ async function refreshCentroContactos() {
   // Selector de cliente (Hoy) + datalist de localidades
   document.getElementById('ccClienteSelect').innerHTML = '<option value="">Seleccionar cliente...</option>' +
     cache.clientes.map(c => `<option value="${c.id}">${c.razon_social}${c.localidad ? ' — ' + c.localidad : ''}</option>`).join('');
-  const localidadesConocidas = [...new Set([...localidadesLogistica, ...cache.clientes.map(c => c.localidad).filter(Boolean)])].sort();
+  const localidadesConocidas = [...new Set([...localidadesLogistica, ...localidadesDisponibles()])].sort();
   document.getElementById('ccLocalidadesDatalist').innerHTML = localidadesConocidas.map(l => `<option value="${l}">`).join('');
   document.getElementById('ccPersonaContacto').innerHTML = '<option value="">Elegí un cliente primero...</option>';
   gestorOfrecidosCcHoy.reset();
@@ -7193,7 +7271,7 @@ async function refreshDashboard() {
 
   // Las 5 Localidades que hace más tiempo no se visitan (mismo criterio que Visitas a Localidades).
   cache.visitasLocalidad = await DB.listVisitasLocalidad();
-  const localidadesConClientes = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))];
+  const localidadesConClientes = localidadesDisponibles();
   const panoramaVisitas = localidadesConClientes.map(loc => {
     const visitasDeLocalidad = cache.visitasLocalidad.filter(v => v.localidad === loc).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
     const ultima = visitasDeLocalidad[0] || null;
@@ -7264,7 +7342,7 @@ async function refreshVentasTab() {
 // con nada — solo se arma con las localidades de los clientes visibles.
 function refreshVtaAnalisisFiltroLocalidad() {
   const actual = document.getElementById('vtaAnalisisLocalidad').value;
-  const localidades = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))].sort();
+  const localidades = localidadesDisponibles().sort();
   document.getElementById('vtaAnalisisLocalidad').innerHTML = '<option value="">Todas</option>' + localidades.map(l => `<option value="${l}">${l}</option>`).join('');
   if (localidades.includes(actual)) document.getElementById('vtaAnalisisLocalidad').value = actual;
 }
@@ -8109,7 +8187,7 @@ document.getElementById('vtaCoberturaMes').addEventListener('change', renderVtaC
 // resto de la pantalla).
 function refreshVtaResumenFiltroLocalidad() {
   const actual = document.getElementById('vtaResumenLocalidad').value;
-  const localidades = [...new Set(cache.clientes.map(c => c.localidad).filter(Boolean))].sort();
+  const localidades = localidadesDisponibles().sort();
   document.getElementById('vtaResumenLocalidad').innerHTML = '<option value="">Todas</option>' + localidades.map(l => `<option value="${l}">${l}</option>`).join('');
   if (localidades.includes(actual)) document.getElementById('vtaResumenLocalidad').value = actual;
 }
@@ -8823,6 +8901,7 @@ async function init() {
   await Promise.all([
     refreshSucursales(),
     refreshLocalidadesLogistica(),
+    refreshLocalidadesPropias(),
     DB.listProfiles().then(data => { cache.profiles = data; }),
     DB.listProfileSucursales().then(data => { cache.profileSucursales = data; }),
     refreshArticulos(),
