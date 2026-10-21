@@ -2400,7 +2400,7 @@ const DB_RAW = {
     const match = buscarClienteFlexible(nombre, localidad);
     if (match) return { cliente: match, creado: false };
     const { data, error } = await sb.from('clientes')
-      .insert({ razon_social: nombre.trim(), localidad: localidad || null, telefono: telefono || null, sucursal_id: sucursalId || null, created_by: currentProfile ? currentProfile.id : null })
+      .insert({ razon_social: nombre.trim(), localidad: normalizarLocalidad(localidad) || null, telefono: telefono || null, sucursal_id: sucursalId || null, created_by: currentProfile ? currentProfile.id : null })
       .select().single();
     if (error) throw error;
     cache.clientes.push(data);
@@ -2840,6 +2840,14 @@ document.getElementById('edClLocalidad').addEventListener('change', (e) => {
   document.getElementById('edClLocalidadOtra').style.display = e.target.value === '__otra__' ? 'block' : 'none';
 });
 
+// Deja la localidad en un formato único (mayúsculas, sin espacios de más al
+// principio, al final ni repetidos) — si no, "CARLOS CASARES" y
+// "CARLOS CASARES " se cuentan como dos localidades distintas en filtros y
+// dashboards.
+function normalizarLocalidad(texto) {
+  return (texto || '').toString().replace(/\s+/g, ' ').trim().toUpperCase();
+}
+
 function limpiarFormularioCliente() {
   ['clRazonSocial','clEmail','clTelefono','clCuit','clDomicilio','clZona','clLocalidadOtra'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('clSucursal').value = sucursalActivaEfectiva() || '';
@@ -2884,7 +2892,7 @@ document.getElementById('btnGuardarCliente').addEventListener('click', async () 
   const razon_social = document.getElementById('clRazonSocial').value.trim();
   if (!razon_social) { alert('Falta la razón social.'); return; }
   const localidadSel = document.getElementById('clLocalidad').value;
-  const localidad = localidadSel === '__otra__' ? document.getElementById('clLocalidadOtra').value.trim().toUpperCase() : localidadSel;
+  const localidad = normalizarLocalidad(localidadSel === '__otra__' ? document.getElementById('clLocalidadOtra').value : localidadSel);
   const payload = {
     razon_social,
     localidad: localidad || null,
@@ -2942,7 +2950,7 @@ document.getElementById('btnMigrarLogistica').addEventListener('click', async ()
       const localidad = localidades.find(l => l.id === op.localidad_id);
       await DB.createCliente({
         razon_social: op.nombre,
-        localidad: localidad ? localidad.nombre : null,
+        localidad: localidad ? (normalizarLocalidad(localidad.nombre) || null) : null,
         domicilio: op.direccion || null,
         telefono: op.telefono || null,
         sucursal_id: op.sucursal_id ? (mapaSucursales[op.sucursal_id] || null) : null,
@@ -3037,7 +3045,7 @@ document.getElementById('fileImportarClientes').addEventListener('change', (e) =
         if (!razonSocial) continue;
         icFilasParaImportar.push({
           razon_social: razonSocial,
-          localidad: col.localidad >= 0 ? (r[col.localidad] || '').toString().trim() : '',
+          localidad: col.localidad >= 0 ? normalizarLocalidad(r[col.localidad]) : '',
           email: col.email >= 0 ? (r[col.email] || '').toString().trim() : '',
           telefono: col.telefono >= 0 ? (r[col.telefono] || '').toString().trim() : '',
           cuit: col.cuit >= 0 ? (r[col.cuit] || '').toString().trim() : '',
@@ -3292,7 +3300,7 @@ document.getElementById('btnGuardarDatosCliente').addEventListener('click', asyn
   const razon_social = document.getElementById('edClRazonSocial').value.trim();
   if (!razon_social) { alert('Falta la razón social.'); return; }
   const localidadSel = document.getElementById('edClLocalidad').value;
-  const localidad = localidadSel === '__otra__' ? document.getElementById('edClLocalidadOtra').value.trim().toUpperCase() : localidadSel;
+  const localidad = normalizarLocalidad(localidadSel === '__otra__' ? document.getElementById('edClLocalidadOtra').value : localidadSel);
   try {
     await DB.updateCliente(modalClienteId, {
       razon_social,
