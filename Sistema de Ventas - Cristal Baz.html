@@ -1762,6 +1762,11 @@
         <div id="csSugerenciasContenido"></div>
       </div>
 
+      <div id="oportunidadesBox" class="note" style="display:none;">
+        <strong>🎯 Lo que más sale y este cliente no compra (o compra poco)</strong>
+        <div id="oportunidadesContenido"></div>
+      </div>
+
       <h3>Datos del cliente</h3>
       <div class="field-row">
         <div class="field"><label>Razón Social *</label><input id="edClRazonSocial"></div>
@@ -3163,6 +3168,105 @@ async function openClienteModal(clienteId) {
   renderHistorialVentasCliente(clienteId);
   renderFichaRentabilidad();
   document.getElementById('clienteModalOverlay').style.display = 'flex';
+  renderOportunidadesFicha(clienteId).catch(e => console.error('No se pudieron calcular las oportunidades del cliente', e));
+}
+
+// Compara este cliente contra TODOS los clientes visibles (respeta la
+// sucursal elegida arriba) en los últimos OPORTUNIDADES_MESES meses, y marca
+// de lo que más se vende en el sistema qué NO compra, o compra mucho menos
+// que el cliente promedio que sí lo compra. Primero por Subrubro y después
+// por Artículo. Las ventas detalladas se piden recién acá (una sola vez,
+// después quedan en caché), así la ficha abre igual de rápido.
+const OPORTUNIDADES_MESES = 6;
+const OPORTUNIDADES_TOP_SUBRUBROS = 8;
+const OPORTUNIDADES_TOP_ARTICULOS = 12;
+const OPORTUNIDADES_UMBRAL_POCO = 0.3; // menos del 30% del promedio de quienes lo compran = "compra muy poco"
+async function renderOportunidadesFicha(clienteId) {
+  const box = document.getElementById('oportunidadesBox');
+  const cont = document.getElementById('oportunidadesContenido');
+  box.style.display = 'block';
+  cont.innerHTML = '<span class="hint">Calculando...</span>';
+  await asegurarVentasDetalladas();
+  if (modalClienteId !== clienteId) return; // se cerró o se abrió otro cliente mientras cargaba
+
+  const hoy = new Date();
+  const desdeClave = claveMes(new Date(hoy.getFullYear(), hoy.getMonth() - OPORTUNIDADES_MESES, 1).getFullYear(), new Date(hoy.getFullYear(), hoy.getMonth() - OPORTUNIDADES_MESES, 1).getMonth());
+  const idsPermitidos = new Set(cache.clientes.map(c => c.id));
+  const articulosPorId = {};
+  cache.articulos.forEach(a => { articulosPorId[a.id] = a; });
+
+  const porSubrubro = {};
+  const porArticulo = {};
+  let ventasDelCliente = 0;
+  cache.ventas.forEach(v => {
+    if (!v.articulo_id || !idsPermitidos.has(v.cliente_id)) return;
+    if (claveDeFecha(v.fecha) < desdeClave) return;
+    const a = articulosPorId[v.articulo_id];
+    if (!a || (a.grupo || '').toLowerCase().includes('materia prima')) return;
+    const monto = Number(v.monto || 0);
+    const cantidad = Number(v.cantidad || 0);
+    const esDelCliente = v.cliente_id === clienteId;
+    if (esDelCliente) ventasDelCliente++;
+    if (a.subrubro) {
+      if (!porSubrubro[a.subrubro]) porSubrubro[a.subrubro] = { nombre: a.subrubro, monto: 0, compradores: new Set(), clienteMonto: 0 };
+      const s = porSubrubro[a.subrubro];
+      s.monto += monto;
+      s.compradores.add(v.cliente_id);
+      if (esDelCliente) s.clienteMonto += monto;
+    }
+    if (!porArticulo[a.id]) porArticulo[a.id] = { nombre: a.nombre, subrubro: a.subrubro, monto: 0, cantidad: 0, compradores: new Set(), clienteCantidad: 0 };
+    const art = porArticulo[a.id];
+    art.monto += monto;
+    art.cantidad += cantidad;
+    art.compradores.add(v.cliente_id);
+    if (esDelCliente) art.clienteCantidad += cantidad;
+  });
+
+  const estado = (valorCliente, totalGeneral, cantCompradores) => {
+    if (valorCliente <= 0) return 'no';
+    const promedioComprador = cantCompradores > 0 ? totalGeneral / cantCompradores : 0;
+    return valorCliente < promedioComprador * OPORTUNIDADES_UMBRAL_POCO ? 'poco' : 'ok';
+  };
+  const badge = (e) => e === 'no' ? '<span class="badge badge-red">No compra</span>' : '<span class="badge badge-orange">Compra muy poco</span>';
+
+  const topSubrubros = Object.values(porSubrubro).sort((a, b) => b.monto - a.monto).slice(0, OPORTUNIDADES_TOP_SUBRUBROS);
+  const filasSub = topSubrubros
+    .map(s => ({ ...s, estado: estado(s.clienteMonto, s.monto, s.compradores.size) }))
+    .filter(s => s.estado !== 'ok');
+  const topArticulos = Object.values(porArticulo).sort((a, b) => b.monto - a.monto).slice(0, OPORTUNIDADES_TOP_ARTICULOS);
+  const filasArt = topArticulos
+    .map(a => ({ ...a, estado: estado(a.clienteCantidad, a.cantidad, a.compradores.size) }))
+    .filter(a => a.estado !== 'ok');
+
+  if (!topSubrubros.length && !topArticulos.length) {
+    cont.innerHTML = '<span class="hint">Todavía no hay ventas suficientes en los últimos meses para comparar.</span>';
+    return;
+  }
+
+  const totalClientes = idsPermitidos.size;
+  const intro = ventasDelCliente
+    ? ''
+    : '<p class="hint">Este cliente no tiene compras en los últimos ' + OPORTUNIDADES_MESES + ' meses, así que aparece todo lo más vendido.</p>';
+  const tablaSub = filasSub.length ? `
+    <h4 style="margin:10px 0 4px;">Por Subrubro (de los ${topSubrubros.length} que más se venden)</h4>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Subrubro</th><th>Lo que se vendió en total</th><th>Clientes que lo compran</th><th>Este cliente</th><th></th></tr></thead>
+      <tbody>${filasSub.map(s => `<tr>
+        <td>${s.nombre}</td><td>${FORMATO_PESOS(s.monto)}</td><td>${s.compradores.size} de ${totalClientes}</td><td>${FORMATO_PESOS(s.clienteMonto)}</td><td>${badge(s.estado)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>` : `<p class="hint">👍 Compra bien todos los Subrubros que más se venden.</p>`;
+  const tablaArt = filasArt.length ? `
+    <h4 style="margin:10px 0 4px;">Por Artículo (de los ${topArticulos.length} que más se venden)</h4>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Artículo</th><th>Subrubro</th><th>Clientes que lo compran</th><th>Unidades de este cliente</th><th></th></tr></thead>
+      <tbody>${filasArt.map(a => `<tr>
+        <td>${a.nombre}</td><td>${a.subrubro || '—'}</td><td>${a.compradores.size} de ${totalClientes}</td><td>${a.clienteCantidad.toLocaleString('es-AR')}</td><td>${badge(a.estado)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>` : `<p class="hint">👍 Compra bien los Artículos que más se venden.</p>`;
+
+  cont.innerHTML = `
+    <p class="hint">Comparado con todos tus clientes en los últimos ${OPORTUNIDADES_MESES} meses. "Compra muy poco" = menos del ${Math.round(OPORTUNIDADES_UMBRAL_POCO * 100)}% de lo que compra, en promedio, un cliente que sí lo compra.</p>
+    ${intro}${tablaSub}${tablaArt}`;
 }
 
 // Margen de este cliente sobre todo su historial (ventasClienteFichaActual,
