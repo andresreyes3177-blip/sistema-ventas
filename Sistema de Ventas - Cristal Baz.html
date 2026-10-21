@@ -2565,7 +2565,36 @@ function asegurarVentasDetalladas() {
 // Llamar solo donde realmente cambian filas de la tabla ventas (importar,
 // agregar venta manual, borrar un período) — así la próxima pantalla que
 // pida el detalle lo trae de nuevo con los cambios ya adentro.
-function invalidarVentasDetalladas() { vtaVentasDetalladasPromise = null; }
+function invalidarVentasDetalladas() { vtaVentasDetalladasPromise = null; ventasRecientesPromise = null; }
+
+// Ventas desde una fecha (YYYY-MM-DD) en adelante, para pantallas que solo
+// necesitan los últimos meses (ej: Oportunidades en la ficha del cliente) y
+// no justifican traer todo el historial. Pide la primera página con el
+// total y el resto de las páginas en paralelo (en vez de una atrás de otra),
+// y queda en caché hasta que invalidarVentasDetalladas() la descarte.
+let ventasRecientesPromise = null;
+function asegurarVentasRecientes(desdeFecha) {
+  if (!ventasRecientesPromise) {
+    ventasRecientesPromise = (async () => {
+      const porPagina = 1000;
+      const pedirPagina = (n) => sb.from('ventas')
+        .select('cliente_id, articulo_id, fecha, cantidad, monto', n === 0 ? { count: 'exact' } : undefined)
+        .gte('fecha', desdeFecha)
+        .order('id', { ascending: true })
+        .range(n * porPagina, n * porPagina + porPagina - 1);
+      const primera = await pedirPagina(0);
+      if (primera.error) throw primera.error;
+      const total = primera.count || primera.data.length;
+      const paginasRestantes = Math.max(0, Math.ceil(total / porPagina) - 1);
+      const resto = await Promise.all(Array.from({ length: paginasRestantes }, (_, i) => pedirPagina(i + 1)));
+      let todas = primera.data;
+      resto.forEach(r => { if (r.error) throw r.error; todas = todas.concat(r.data); });
+      return todas;
+    })();
+    ventasRecientesPromise.catch(() => { ventasRecientesPromise = null; }); // si falla, que el próximo intento vuelva a pedirlo
+  }
+  return ventasRecientesPromise;
+}
 
 async function refreshUltimosContactos() {
   const filas = await DB.listUltimosContactos();
@@ -3186,11 +3215,19 @@ async function renderOportunidadesFicha(clienteId) {
   const cont = document.getElementById('oportunidadesContenido');
   box.style.display = 'block';
   cont.innerHTML = '<span class="hint">Calculando...</span>';
-  await asegurarVentasDetalladas();
+  const hoy = new Date();
+  const primerDiaDesde = new Date(hoy.getFullYear(), hoy.getMonth() - OPORTUNIDADES_MESES, 1);
+  const desdeClave = claveMes(primerDiaDesde.getFullYear(), primerDiaDesde.getMonth());
+  let ventasPeriodo;
+  try {
+    ventasPeriodo = await asegurarVentasRecientes(desdeClave + '-01');
+  } catch (e) {
+    console.error(e);
+    if (modalClienteId === clienteId) cont.innerHTML = '<span class="hint">No se pudieron cargar las ventas para comparar. Cerrá y volvé a abrir la ficha para reintentar.</span>';
+    return;
+  }
   if (modalClienteId !== clienteId) return; // se cerró o se abrió otro cliente mientras cargaba
 
-  const hoy = new Date();
-  const desdeClave = claveMes(new Date(hoy.getFullYear(), hoy.getMonth() - OPORTUNIDADES_MESES, 1).getFullYear(), new Date(hoy.getFullYear(), hoy.getMonth() - OPORTUNIDADES_MESES, 1).getMonth());
   const idsPermitidos = new Set(cache.clientes.map(c => c.id));
   const articulosPorId = {};
   cache.articulos.forEach(a => { articulosPorId[a.id] = a; });
@@ -3198,9 +3235,8 @@ async function renderOportunidadesFicha(clienteId) {
   const porSubrubro = {};
   const porArticulo = {};
   let ventasDelCliente = 0;
-  cache.ventas.forEach(v => {
+  ventasPeriodo.forEach(v => {
     if (!v.articulo_id || !idsPermitidos.has(v.cliente_id)) return;
-    if (claveDeFecha(v.fecha) < desdeClave) return;
     const a = articulosPorId[v.articulo_id];
     if (!a || (a.grupo || '').toLowerCase().includes('materia prima')) return;
     const monto = Number(v.monto || 0);
