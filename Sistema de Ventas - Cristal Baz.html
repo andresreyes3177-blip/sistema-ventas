@@ -2726,7 +2726,7 @@ function renderSegmentosClientes(localidadFiltro) {
   document.getElementById('clientesSegmentos').innerHTML = botones.map(([clave, texto]) =>
     `<button type="button" class="btn-tab${segmentoClientesFiltro === clave ? ' is-active' : ''}" data-segmento-cliente="${clave}">${texto}</button>`).join('');
   document.getElementById('clientesSegmentosHint').textContent =
-    `Según las ventas reales: Activos = compraron en los últimos ${SEGMENTO_MESES_ACTIVO} meses · Dejaron de comprar = compraron alguna vez pero no en esos meses · Prospectos = nunca compraron · Nuevos ${anio} = su primera compra fue este año (también cuentan como Activos). Tocá uno para filtrar la lista.`;
+    `Según las ventas reales: Activos = compraron en los últimos ${SEGMENTO_MESES_ACTIVO} meses · Dejaron de comprar = compraron alguna vez pero no en esos meses · Prospectos = nunca compraron · Nuevos ${anio} = su primera compra fue este año (puede que alguno ya no esté activo: en la lista se ve su estado actual). Tocá uno para filtrar la lista.`;
 }
 document.getElementById('clientesSegmentos').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-segmento-cliente]');
@@ -2804,10 +2804,14 @@ function renderClientes() {
     const ultimoContacto = cache.ultimoContactoPorCliente[c.id];
     const ultimoContactoHtml = ultimoContacto ? new Date(ultimoContacto).toLocaleDateString('es-AR') : '<span class="hint">Sin contactar</span>';
     const marcado = clientesSeleccionados.has(c.id);
-    const estadoComercial = c.estado_comercial || 'cliente';
-    const noEsClienteActivo = estadoComercial !== 'cliente';
-    const filaStyle = estadoComercial === 'prospecto' ? ' style="background:#fff6e0;"' : estadoComercial === 'perdido' ? ' style="background:#fde8e6;"' : '';
-    const estadoBadge = estadoComercial === 'prospecto' ? '<span class="badge badge-orange">Prospecto</span>' : estadoComercial === 'perdido' ? '<span class="badge badge-red">Perdido</span>' : '';
+    // Color y etiqueta del renglón según las ventas REALES (segmentoCliente),
+    // igual que los botones de arriba — no según la etiqueta manual "Estado
+    // comercial", que podía contradecirlos.
+    const seg = segmentoCliente(c.id);
+    const noEsClienteActivo = seg.tipo === 'prospecto';
+    const filaStyle = seg.tipo === 'prospecto' ? ' style="background:#fff6e0;"' : seg.tipo === 'perdido' ? ' style="background:#fde8e6;"' : '';
+    const estadoBadge = (seg.tipo === 'prospecto' ? '<span class="badge badge-orange">Prospecto</span>' : seg.tipo === 'perdido' ? '<span class="badge badge-red">Dejó de comprar</span>' : '')
+      + (seg.nuevoAnio ? ' <span class="badge badge-green">Nuevo</span>' : '');
     return `<tr${filaStyle}>
       <td><input type="checkbox" data-check-cliente="${c.id}" ${marcado ? 'checked' : ''}></td>
       <td>${c.razon_social}${estadoBadge ? ' ' + estadoBadge : ''}</td>
