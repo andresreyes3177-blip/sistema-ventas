@@ -685,6 +685,9 @@
       </div>
       <p class="hint" id="ventasVacioHint">El consumo y el % vs. promedio van a mostrar $0 hasta que importes ventas — pestaña "Importar Ventas".</p>
 
+      <div class="toolbar mode-tabs" id="clientesSegmentos"></div>
+      <p class="hint" id="clientesSegmentosHint"></p>
+
       <div class="field-row">
         <div class="field"><label>Buscar por razón social</label><input id="clienteBuscar" placeholder="Escribí para filtrar..."></div>
         <div class="field"><label>Localidad</label><select id="filtroLocalidad"><option value="">Todas</option></select></div>
@@ -2680,6 +2683,58 @@ function refreshFiltroLocalidad() {
   if (localidades.includes(actual)) sel.value = actual;
 }
 
+// Segmenta a cada cliente según sus ventas REALES (no según la etiqueta
+// manual "Estado comercial", que no siempre se mantiene al día):
+//  - activo:    compró en los últimos 3 meses (el mes en curso y los 2 anteriores)
+//  - perdido:   compró alguna vez, pero no en esos 3 meses
+//  - prospecto: nunca registró una compra
+// y además marca "nuevo del año" si su PRIMERA compra de todo el historial
+// fue en el año en curso (un cliente nuevo también cuenta como activo).
+const SEGMENTO_MESES_ACTIVO = 3;
+function segmentoCliente(clienteId) {
+  const meses = cache.consumoPorClienteMes[clienteId] || {};
+  const clavesConVenta = Object.keys(meses).filter(k => meses[k].total > 0 || meses[k].cantidad > 0).sort();
+  if (!clavesConVenta.length) return { tipo: 'prospecto', nuevoAnio: false };
+  const hoy = new Date();
+  const primerMesActivo = new Date(hoy.getFullYear(), hoy.getMonth() - (SEGMENTO_MESES_ACTIVO - 1), 1);
+  const desdeClave = claveMes(primerMesActivo.getFullYear(), primerMesActivo.getMonth());
+  return {
+    tipo: clavesConVenta.some(k => k >= desdeClave) ? 'activo' : 'perdido',
+    nuevoAnio: clavesConVenta[0] >= hoy.getFullYear() + '-01',
+  };
+}
+
+let segmentoClientesFiltro = ''; // '' = todos | 'activo' | 'perdido' | 'prospecto' | 'nuevo'
+function renderSegmentosClientes(localidadFiltro) {
+  // Los números respetan la sucursal elegida arriba y el filtro de Localidad,
+  // y no cuentan los clientes deshabilitados.
+  const base = cache.clientes.filter(c => !c.deshabilitado && (!localidadFiltro || c.localidad === localidadFiltro));
+  const conteo = { activo: 0, perdido: 0, prospecto: 0, nuevo: 0 };
+  base.forEach(c => {
+    const s = segmentoCliente(c.id);
+    conteo[s.tipo]++;
+    if (s.nuevoAnio) conteo.nuevo++;
+  });
+  const anio = new Date().getFullYear();
+  const botones = [
+    ['', `👥 Todos (${base.length})`],
+    ['activo', `✅ Activos (${conteo.activo})`],
+    ['perdido', `⚠️ Dejaron de comprar (${conteo.perdido})`],
+    ['prospecto', `🕓 Prospectos (${conteo.prospecto})`],
+    ['nuevo', `🆕 Nuevos ${anio} (${conteo.nuevo})`],
+  ];
+  document.getElementById('clientesSegmentos').innerHTML = botones.map(([clave, texto]) =>
+    `<button type="button" class="btn-tab${segmentoClientesFiltro === clave ? ' is-active' : ''}" data-segmento-cliente="${clave}">${texto}</button>`).join('');
+  document.getElementById('clientesSegmentosHint').textContent =
+    `Según las ventas reales: Activos = compraron en los últimos ${SEGMENTO_MESES_ACTIVO} meses · Dejaron de comprar = compraron alguna vez pero no en esos meses · Prospectos = nunca compraron · Nuevos ${anio} = su primera compra fue este año (también cuentan como Activos). Tocá uno para filtrar la lista.`;
+}
+document.getElementById('clientesSegmentos').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-segmento-cliente]');
+  if (!btn) return;
+  segmentoClientesFiltro = btn.dataset.segmentoCliente;
+  renderClientes();
+});
+
 function renderClientes() {
   const filtro = (document.getElementById('clienteBuscar').value || '').toLowerCase();
   const localidadFiltro = document.getElementById('filtroLocalidad').value;
@@ -2696,7 +2751,15 @@ function renderClientes() {
     ? '👁️ Ver clientes activos'
     : `🚫 Ver deshabilitados (${totalDeshabilitados})`;
 
+  renderSegmentosClientes(localidadFiltro);
+
   let lista = cache.clientes.filter(c => !!c.deshabilitado === verDeshabilitados);
+  if (segmentoClientesFiltro) {
+    lista = lista.filter(c => {
+      const s = segmentoCliente(c.id);
+      return segmentoClientesFiltro === 'nuevo' ? s.nuevoAnio : s.tipo === segmentoClientesFiltro;
+    });
+  }
   lista = lista.filter(c => c.razon_social.toLowerCase().includes(filtro));
   if (localidadFiltro) lista = lista.filter(c => c.localidad === localidadFiltro);
   if (estadoComercialFiltro === 'no_activo') lista = lista.filter(c => c.estado_comercial && c.estado_comercial !== 'cliente');
@@ -2833,6 +2896,7 @@ document.getElementById('btnVerDeshabilitados').addEventListener('click', () => 
   renderClientes();
 });
 document.getElementById('btnLimpiarFiltros').addEventListener('click', () => {
+  segmentoClientesFiltro = '';
   ['clienteBuscar','filtroLocalidad','filtroContactoDesde','filtroContactoHasta','filtroConsumoDesde','filtroConsumoHasta','filtroEstadoComercial'].forEach(id => document.getElementById(id).value = '');
   renderClientes();
 });
