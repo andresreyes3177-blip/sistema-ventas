@@ -2698,9 +2698,12 @@ function segmentoCliente(clienteId) {
   const hoy = new Date();
   const primerMesActivo = new Date(hoy.getFullYear(), hoy.getMonth() - (SEGMENTO_MESES_ACTIVO - 1), 1);
   const desdeClave = claveMes(primerMesActivo.getFullYear(), primerMesActivo.getMonth());
+  const esActivo = clavesConVenta.some(k => k >= desdeClave);
   return {
-    tipo: clavesConVenta.some(k => k >= desdeClave) ? 'activo' : 'perdido',
-    nuevoAnio: clavesConVenta[0] >= hoy.getFullYear() + '-01',
+    tipo: esActivo ? 'activo' : 'perdido',
+    // "Nuevo" solo si su primera compra fue este año Y sigue activo — el que
+    // compró una vez en enero y no volvió cuenta como "dejó de comprar".
+    nuevoAnio: esActivo && clavesConVenta[0] >= hoy.getFullYear() + '-01',
   };
 }
 
@@ -2726,7 +2729,7 @@ function renderSegmentosClientes(localidadFiltro) {
   document.getElementById('clientesSegmentos').innerHTML = botones.map(([clave, texto]) =>
     `<button type="button" class="btn-tab${segmentoClientesFiltro === clave ? ' is-active' : ''}" data-segmento-cliente="${clave}">${texto}</button>`).join('');
   document.getElementById('clientesSegmentosHint').textContent =
-    `Según las ventas reales: Activos = compraron en los últimos ${SEGMENTO_MESES_ACTIVO} meses · Dejaron de comprar = compraron alguna vez pero no en esos meses · Prospectos = nunca compraron · Nuevos ${anio} = su primera compra fue este año (puede que alguno ya no esté activo: en la lista se ve su estado actual). Tocá uno para filtrar la lista.`;
+    `Según las ventas reales: Activos = compraron en los últimos ${SEGMENTO_MESES_ACTIVO} meses · Dejaron de comprar = compraron alguna vez pero no en esos meses · Prospectos = nunca compraron · Nuevos ${anio} = su primera compra fue este año y siguen activos (ya están contados también en Activos). Tocá uno para filtrar la lista.`;
 }
 document.getElementById('clientesSegmentos').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-segmento-cliente]');
